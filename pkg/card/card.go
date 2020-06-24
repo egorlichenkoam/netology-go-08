@@ -3,7 +3,7 @@ package card
 // карта
 type Card struct {
 	id           int
-	Issuer       string
+	issuer       string
 	Balance      int
 	Currency     string
 	Number       string
@@ -23,9 +23,11 @@ func NewService(bankName string) *Service {
 }
 
 // добавляет карту
-func (s *Service) AddCard(card Card) {
+func (s *Service) AddCard(card *Card) {
 
-	s.Cards = append(s.Cards, &card)
+	card.issuer = s.BankName
+
+	s.Cards = append(s.Cards, card)
 }
 
 // возвращает карту по номеру карты или nil
