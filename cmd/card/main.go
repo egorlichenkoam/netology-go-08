@@ -3,60 +3,49 @@ package main
 import (
 	"fmt"
 	"homework/pkg/card"
-	"time"
+	"homework/pkg/transfer"
 )
 
 func main() {
 
-	master := &card.Card{
-		Issuer:   "Gipermarket",
-		Balance:  1000000,
-		Currency: "",
-		Number:   "7643-1237-2383-9386",
-		Icon:     "masterCard.png",
-		Transactions: []card.Transaction{
-			{
-				Id:       1,
-				Sum:      -73555,
-				Datetime: time.Now().Unix(),
-				Mcc:      "5411",
-				Status:   "DONE",
-			},
-			{
-				Id:       2,
-				Sum:      200000,
-				Datetime: time.Now().Unix(),
-				Mcc:      "0000",
-				Status:   "DONE",
-			},
-			{
-				Id:       3,
-				Sum:      -120391,
-				Datetime: time.Now().Unix(),
-				Mcc:      "5812",
-				Status:   "DONE",
-			}},
+	cardService := card.NewService("БАНК БАНКОВ")
+
+	cardOne := card.Card{
+		Balance:      1_000_00,
+		Currency:     "RUB",
+		Number:       "0001",
+		Icon:         "card.png",
+		Transactions: nil,
 	}
 
-	fmt.Println(master)
-
-	transaction := &card.Transaction{
-		Id:       4,
-		Sum:      99900,
-		Datetime: time.Now().Unix(),
-		Mcc:      "5555",
-		Status:   "DONE",
+	cardTwo := card.Card{
+		Balance:      10_000_00,
+		Currency:     "RUB",
+		Number:       "0002",
+		Icon:         "card.png",
+		Transactions: nil,
 	}
 
-	fmt.Println(transaction)
+	cardThree := card.Card{
+		Balance:      100_00,
+		Currency:     "RUB",
+		Number:       "0003",
+		Icon:         "card.png",
+		Transactions: nil,
+	}
 
-	card.AddTransaction(master, transaction)
+	cardService.AddCard(&cardOne)
+	cardService.AddCard(&cardTwo)
+	cardService.AddCard(&cardThree)
 
-	fmt.Println(master)
+	transferService := transfer.NewService(cardService)
 
-	fmt.Println(card.SumByMMC(master.Transactions, []string{"5411", "0000"}))
+	fmt.Println(transferService.Card2Card("0001", "0003", 500_00))
 
-	fmt.Println(card.TranslateMCC(transaction.Mcc))
+	fmt.Println(transferService.Card2Card("0007", "0003", 5_000_00))
 
-	fmt.Println(card.LastNTransactions(master, 2))
+	fmt.Println(transferService.Card2Card("0002", "0009", 7_000_00))
+
+	fmt.Println(transferService.Card2Card("0007", "0009", 1_000_00))
+
 }
