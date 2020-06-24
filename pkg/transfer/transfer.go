@@ -1,15 +1,28 @@
 package transfer
 
-import "homework/pkg/card"
+import (
+	"homework/pkg/card"
+	"homework/pkg/transaction"
+	"time"
+)
 
 // сервис
 type Service struct {
-	CardSvc *card.Service
+	CardSvc      *card.Service
+	Transactions []*transaction.Transaction
 }
 
 // конструктор сервиса
 func NewService(cardSvc *card.Service) *Service {
 	return &Service{CardSvc: cardSvc}
+}
+
+// добавляет транзакцию
+func (s *Service) addTransaction(transaction *transaction.Transaction) {
+
+	transaction.Datetime = time.Now().Unix()
+
+	s.Transactions = append(s.Transactions, transaction)
 }
 
 // перевод с карты на карту
@@ -31,12 +44,52 @@ func (s *Service) Card2Card(from, to string, amount int) (total int, ok bool) {
 	if cardFrom != nil {
 
 		_, ok = s.CardSvc.TransferFromCard(cardFrom, totalToTransfer)
+	} else {
+
+		cardFrom = &card.Card{
+			Balance:  0,
+			Currency: "RUB",
+			Number:   from,
+			Icon:     "card.png",
+		}
+
+		card.SetBankName(cardFrom, "ДРУГОЙ БАНК")
 	}
 
 	if cardTo != nil {
 
 		s.CardSvc.TransferToCard(cardTo, amount)
+	} else {
+
+		cardTo = &card.Card{
+			Balance:  0,
+			Currency: "RUB",
+			Number:   to,
+			Icon:     "card.png",
+		}
+
+		card.SetBankName(cardTo, "ДРУГОЙ БАНК")
 	}
+
+	// транзакция для списания
+	s.addTransaction(&transaction.Transaction{
+		Id:            0,
+		Sum:           totalToTransfer,
+		OperationType: "from",
+		Status:        ok,
+		CardFrom:      cardFrom,
+		CardTo:        cardTo,
+	})
+
+	// транзакция для зачисления
+	s.addTransaction(&transaction.Transaction{
+		Id:            0,
+		Sum:           amount,
+		OperationType: "to",
+		Status:        ok,
+		CardFrom:      cardFrom,
+		CardTo:        cardTo,
+	})
 
 	return totalToTransfer, ok
 }
