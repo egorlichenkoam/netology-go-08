@@ -116,7 +116,7 @@ func (s *Service) CheckCardNumberByLuna(number string) bool {
 
 	numberInString := strings.Split(number, "")
 
-	numberInNumders := make([]int, len(numberInString))
+	numberInNumders := make([]int, 0)
 
 	for s := range numberInString {
 
@@ -133,7 +133,7 @@ func (s *Service) CheckCardNumberByLuna(number string) bool {
 
 	for n := range numberInNumders {
 
-		if n%2 > 0 {
+		if (n+1)%2 > 0 {
 
 			numberInNumders[n] = numberInNumders[n] * 2
 
@@ -143,7 +143,7 @@ func (s *Service) CheckCardNumberByLuna(number string) bool {
 			}
 		}
 
-		sum = +numberInNumders[n]
+		sum += numberInNumders[n]
 	}
 
 	if (((sum % 10) - 10) * -1) == 10 {

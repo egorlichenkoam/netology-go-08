@@ -38,15 +38,22 @@ func (s *Service) addTransaction(transaction *transaction.Transaction) {
 // перевод с карты на карту
 func (s *Service) Card2Card(from, to string, amount int) (err error) {
 
+	if !s.isValid(from) {
+
+		return ErrFromCardNumberNotValid
+	}
+
+	if !s.isValid(to) {
+
+		return ErrToCardNumberNotValid
+	}
+
 	// ищем карту с которой будем преводить
 	cardFrom, ok := s.CardSvc.FindCardByNumber(from)
 
 	if !ok {
 
 		return ErrFromCardNotFound
-	} else if !s.IsValid(cardFrom.Number) {
-
-		return ErrFromCardNumberNotValid
 	}
 
 	// ищем карту с которой будем преводить
@@ -55,9 +62,6 @@ func (s *Service) Card2Card(from, to string, amount int) (err error) {
 	if !ok {
 
 		return ErrToCardNotFound
-	} else if !s.IsValid(cardTo.Number) {
-
-		return ErrToCardNumberNotValid
 	}
 
 	// процент за перевод и минимальная коммисия
@@ -150,7 +154,7 @@ func amountPlusCommission(amount int, transferFeePercentage float64, transferFee
 	return amount + internalCommission
 }
 
-func (s *Service) IsValid(number string) bool {
+func (s *Service) isValid(number string) bool {
 
 	return s.CardSvc.CheckCardNumberByLuna(number)
 }

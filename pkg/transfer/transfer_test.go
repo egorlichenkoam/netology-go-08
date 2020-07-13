@@ -20,9 +20,9 @@ func TestService_Card2Card(t *testing.T) {
 	cardService := card.NewService("БАНК БАБАБАНК")
 
 	cardOne := card.Card{
-		Balance:  1_000_00,
+		Balance:  1_0000_00,
 		Currency: "RUB",
-		Number:   "5106210001",
+		Number:   "4191637314259912",
 		Icon:     "card.png",
 	}
 
@@ -75,77 +75,30 @@ func TestService_Card2Card(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "Карта-своего-банка->Карта-своего-банка-(денег-достаточно)",
+			name: "Карта-имеет-валидный-номер,-но-не-будет-найдена-потому-что-принадлежит-другому-банку",
 			fields: fields{
 				CardSvc:      cardService,
 				Transactions: nil,
 			},
 			args: args{
-				from:   "5106210001",
-				to:     "5106210002",
+				from:   "4191637314259912",
+				to:     "4191637314259912",
+				amount: 1_000_00,
+			},
+			wantErr: ErrFromCardNotFound,
+		},
+		{
+			name: "Карта-имеет-невалидный-номер",
+			fields: fields{
+				CardSvc:      cardService,
+				Transactions: nil,
+			},
+			args: args{
+				from:   "4191637314259919",
+				to:     "4191637314259912",
 				amount: 1_000_00,
 			},
 			wantErr: ErrFromCardNumberNotValid,
-		}, {
-			name: "Карта-своего-банка-->-Карта-своего-банка-(денег-недостаточно)",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "5106210003",
-				to:     "5106210002",
-				amount: 10_000_00,
-			},
-			wantErr: ErrFromCardNotEnoughMoney,
-		}, {
-			name: "Карта-своего-банка-->-Карта-чужого-банка-(денег-достаточно)",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "5106210004",
-				to:     "0007",
-				amount: 1_500_00,
-			},
-			wantErr: ErrToCardNotFound,
-		}, {
-			name: "Карта-своего-банка-->-Карта-чужого-банка-(денег-недостаточно)",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "5106210006",
-				to:     "0009",
-				amount: 1_500_00,
-			},
-			wantErr: ErrToCardNotFound,
-		}, {
-			name: "Карта-чужого-банка-->-Карта-своего-банка",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "0010",
-				to:     "5106210005",
-				amount: 1_500_00,
-			},
-			wantErr: ErrFromCardNotFound,
-		}, {
-			name: "Карта-чужого-банка-->-Карта-чужого-банка",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "0016",
-				to:     "0011",
-				amount: 1_500_00,
-			},
-			wantErr: ErrFromCardNotFound,
 		},
 	}
 	for _, tt := range tests {
