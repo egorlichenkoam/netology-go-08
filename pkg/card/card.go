@@ -1,6 +1,7 @@
 package card
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -101,6 +102,51 @@ func SetBankName(card *Card, bankName string) {
 func isCardInternal(number string) bool {
 
 	if strings.HasPrefix(number, "510621") {
+
+		return true
+	}
+
+	return false
+}
+
+// возвращает метку валидности номера карты поалгоритмы Луна (упрощенному)
+func (s *Service) CheckCardNumberByLuna(number string) bool {
+
+	number = strings.ReplaceAll(number, " ", "")
+
+	numberInString := strings.Split(number, "")
+
+	numberInNumders := make([]int, len(numberInString))
+
+	for s := range numberInString {
+
+		if n, err := strconv.Atoi(numberInString[s]); err == nil {
+
+			numberInNumders = append(numberInNumders, n)
+		} else {
+
+			return false
+		}
+	}
+
+	sum := 0
+
+	for n := range numberInNumders {
+
+		if n%2 > 0 {
+
+			numberInNumders[n] = numberInNumders[n] * 2
+
+			if numberInNumders[n] > 9 {
+
+				numberInNumders[n] = numberInNumders[n] - 9
+			}
+		}
+
+		sum = +numberInNumders[n]
+	}
+
+	if (((sum % 10) - 10) * -1) == 10 {
 
 		return true
 	}
