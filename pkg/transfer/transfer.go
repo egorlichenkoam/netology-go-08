@@ -41,10 +41,7 @@ func (s *Service) Card2Card(from, to string, amount int) (total int, ok bool) {
 
 	totalToTransfer := amountPlusCommission(amount, transferFeePercentage, transferFeeMin)
 
-	if cardFrom != nil {
-
-		_, ok = s.CardSvc.TransferFromCard(cardFrom, totalToTransfer)
-	} else {
+	if cardFrom == nil {
 
 		cardFrom = &card.Card{
 			Balance:  0,
@@ -55,6 +52,8 @@ func (s *Service) Card2Card(from, to string, amount int) (total int, ok bool) {
 
 		card.SetBankName(cardFrom, "ДРУГОЙ БАНК")
 	}
+
+	_, ok = s.CardSvc.TransferFromCard(cardFrom, totalToTransfer)
 
 	if cardTo != nil {
 

@@ -63,11 +63,4 @@ func main() {
 	transferService := transfer.NewService(cardService)
 
 	fmt.Println(transferService.Card2Card("0006", "0009", 1_500_00))
-
-	//fmt.Println(transferService.Card2Card("0007", "0003", 5_000_00))
-	//
-	//fmt.Println(transferService.Card2Card("0002", "0009", 7_000_00))
-	//
-	//fmt.Println(transferService.Card2Card("0007", "0009", 1_000_00))
-
 }
