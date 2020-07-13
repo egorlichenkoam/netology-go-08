@@ -8,6 +8,7 @@ type Card struct {
 	Currency string
 	Number   string
 	Icon     string
+	external bool
 }
 
 // сервис
@@ -30,15 +31,15 @@ func (s *Service) AddCard(card *Card) {
 }
 
 // возвращает карту по номеру карты или nil
-func (s *Service) FindCardByNumber(number string) (card *Card) {
+func (s *Service) FindCardByNumber(number string) (card *Card, ok bool) {
 
 	for _, c := range s.Cards {
 		if c.Number == number {
-			return c
+			return c, true
 		}
 	}
 
-	return nil
+	return nil, false
 }
 
 // спивывает с карты средства и возвращает текущий баланс и метку выполнена операция или нет
@@ -46,7 +47,8 @@ func (s *Service) TransferFromCard(cardFrom *Card, amount int) (balance int, ok 
 
 	result := false
 
-	if cardFrom.Balance >= amount {
+	if cardFrom.Balance >= amount || cardFrom.external {
+
 		cardFrom.Balance -= amount
 		result = true
 	}
@@ -66,4 +68,21 @@ func (s *Service) TransferToCard(cardTo *Card, amount int) (balance int, ok bool
 func SetBankName(card *Card, bankName string) {
 
 	card.issuer = bankName
+}
+
+// возвращает наименование банка
+func getBankName(card *Card) (string, bool) {
+
+	if len(card.issuer) > 0 {
+
+		return card.issuer, true
+	}
+
+	return "", false
+}
+
+// задает метку карты внещнего банка
+func SetExternalBank(card *Card, external bool) {
+
+	card.external = external
 }

@@ -72,11 +72,12 @@ func TestService_Card2Card(t *testing.T) {
 		name      string
 		fields    fields
 		args      args
+		wantErr   error
 		wantTotal int
 		wantOk    bool
 	}{
 		{
-			name: "Карта своего банка -> Карта своего банка (денег достаточно)",
+			name: "Карта-своего-банка->Карта-своего-банка-(денег-достаточно)",
 			fields: fields{
 				CardSvc:      cardService,
 				Transactions: nil,
@@ -86,10 +87,11 @@ func TestService_Card2Card(t *testing.T) {
 				to:     "0002",
 				amount: 1_000_00,
 			},
+			wantErr:   nil,
 			wantTotal: 1_000_00,
 			wantOk:    true,
 		}, {
-			name: "Карта своего банка -> Карта своего банка (денег недостаточно)",
+			name: "Карта-своего-банка-->-Карта-своего-банка-(денег-недостаточно)",
 			fields: fields{
 				CardSvc:      cardService,
 				Transactions: nil,
@@ -99,10 +101,11 @@ func TestService_Card2Card(t *testing.T) {
 				to:     "0002",
 				amount: 10_000_00,
 			},
+			wantErr:   ErrFromCardNoEnoughMoney,
 			wantTotal: 10_000_00,
 			wantOk:    false,
 		}, {
-			name: "Карта своего банка -> Карта чужого банка (денег достаточно)",
+			name: "Карта-своего-банка-->-Карта-чужого-банка-(денег-достаточно)",
 			fields: fields{
 				CardSvc:      cardService,
 				Transactions: nil,
@@ -112,10 +115,11 @@ func TestService_Card2Card(t *testing.T) {
 				to:     "0007",
 				amount: 1_500_00,
 			},
+			wantErr:   nil,
 			wantTotal: 1_510_00,
 			wantOk:    true,
 		}, {
-			name: "Карта своего банка -> Карта чужого банка (денег недостаточно)",
+			name: "Карта-своего-банка-->-Карта-чужого-банка-(денег-недостаточно)",
 			fields: fields{
 				CardSvc:      cardService,
 				Transactions: nil,
@@ -125,10 +129,11 @@ func TestService_Card2Card(t *testing.T) {
 				to:     "0009",
 				amount: 1_500_00,
 			},
+			wantErr:   ErrFromCardNoEnoughMoney,
 			wantTotal: 1_510_00,
 			wantOk:    false,
 		}, {
-			name: "Карта чужого банка -> Карта своего банка",
+			name: "Карта-чужого-банка-->-Карта-своего-банка",
 			fields: fields{
 				CardSvc:      cardService,
 				Transactions: nil,
@@ -138,10 +143,11 @@ func TestService_Card2Card(t *testing.T) {
 				to:     "0005",
 				amount: 1_500_00,
 			},
+			wantErr:   nil,
 			wantTotal: 1_500_00,
 			wantOk:    true,
 		}, {
-			name: "Карта чужого банка -> Карта чужого банка",
+			name: "Карта-чужого-банка-->-Карта-чужого-банка",
 			fields: fields{
 				CardSvc:      cardService,
 				Transactions: nil,
@@ -151,22 +157,37 @@ func TestService_Card2Card(t *testing.T) {
 				to:     "0011",
 				amount: 1_500_00,
 			},
+			wantErr:   nil,
 			wantTotal: 1_530_00,
 			wantOk:    true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			s := &Service{
 				CardSvc:      tt.fields.CardSvc,
 				Transactions: tt.fields.Transactions,
 			}
-			gotTotal, gotOk := s.Card2Card(tt.args.from, tt.args.to, tt.args.amount)
+
+			gotTotal, gotErr, gotOk := s.Card2Card(tt.args.from, tt.args.to, tt.args.amount)
+
+			// сколько всего надо перевести
 			if gotTotal != tt.wantTotal {
+
 				t.Errorf("Card2Card() gotTotal = %v, want %v", gotTotal, tt.wantTotal)
 			}
+
+			// получилось ли перевести
 			if gotOk != tt.wantOk {
+
 				t.Errorf("Card2Card() gotOk = %v, want %v", gotOk, tt.wantOk)
+			}
+
+			// отхватили ли ошибку
+			if gotErr != tt.wantErr {
+
+				t.Errorf("Card2Card() gotErr = %v, want %v", gotErr, tt.wantErr)
 			}
 		})
 	}
