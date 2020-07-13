@@ -1,5 +1,9 @@
 package card
 
+import (
+	"strings"
+)
+
 // карта
 type Card struct {
 	id       int
@@ -8,7 +12,6 @@ type Card struct {
 	Currency string
 	Number   string
 	Icon     string
-	external bool
 }
 
 // сервис
@@ -16,6 +19,10 @@ type Service struct {
 	BankName string
 	Cards    []*Card
 }
+
+var (
+	cardnumber_prefix = "510621"
+)
 
 // конструктор
 func NewService(bankName string) *Service {
@@ -33,10 +40,30 @@ func (s *Service) AddCard(card *Card) {
 // возвращает карту по номеру карты или nil
 func (s *Service) FindCardByNumber(number string) (card *Card, ok bool) {
 
-	for _, c := range s.Cards {
-		if c.Number == number {
-			return c, true
+	if isCardInternal(number) {
+
+		var cardInternal *Card = nil
+
+		for _, c := range s.Cards {
+
+			if c.Number == number {
+				cardInternal = c
+			}
 		}
+
+		if cardInternal == nil {
+
+			cardInternal := &Card{
+				Balance:  0,
+				Currency: "RUB",
+				Number:   number,
+				Icon:     "card.png",
+			}
+
+			s.AddCard(cardInternal)
+		}
+
+		return cardInternal, true
 	}
 
 	return nil, false
@@ -47,7 +74,7 @@ func (s *Service) TransferFromCard(cardFrom *Card, amount int) (balance int, ok 
 
 	result := false
 
-	if cardFrom.Balance >= amount || cardFrom.external {
+	if cardFrom.Balance >= amount {
 
 		cardFrom.Balance -= amount
 		result = true
@@ -70,19 +97,13 @@ func SetBankName(card *Card, bankName string) {
 	card.issuer = bankName
 }
 
-// возвращает наименование банка
-func getBankName(card *Card) (string, bool) {
+// возвращает метку принадлежит карта нашему банку или нет
+func isCardInternal(number string) bool {
 
-	if len(card.issuer) > 0 {
+	if strings.HasPrefix(number, "510621") {
 
-		return card.issuer, true
+		return true
 	}
 
-	return "", false
-}
-
-// задает метку карты внещнего банка
-func SetExternalBank(card *Card, external bool) {
-
-	card.external = external
+	return false
 }

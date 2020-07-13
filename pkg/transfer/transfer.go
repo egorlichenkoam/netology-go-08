@@ -14,7 +14,10 @@ type Service struct {
 }
 
 var (
-	ErrFromCardNoEnoughMoney = errors.New("Source card: not enough money")
+	ErrFromCardNotEnoughMoney = errors.New("Source card: not enough money")
+	ErrFromCardNotFound       = errors.New("Source card not found")
+
+	ErrToCardNotFound = errors.New("Target card not found")
 )
 
 // конструктор сервиса
@@ -38,8 +41,18 @@ func (s *Service) Card2Card(from, to string, amount int) (total int, err error, 
 	// ищем карту с которой будем преводить
 	cardFrom, ok := s.CardSvc.FindCardByNumber(from)
 
+	if !ok {
+
+		return 0, ErrFromCardNotFound, false
+	}
+
 	// ищем карту с которой будем преводить
 	cardTo, ok := s.CardSvc.FindCardByNumber(to)
+
+	if !ok {
+
+		return 0, ErrToCardNotFound, false
+	}
 
 	// процент за перевод и минимальная коммисия
 	transferFeePercentage, transferFeeMin := transferFeePercentageAndMinimum(cardFrom, cardTo)
@@ -56,15 +69,13 @@ func (s *Service) Card2Card(from, to string, amount int) (total int, err error, 
 		}
 
 		card.SetBankName(cardFrom, "ДРУГОЙ БАНК")
-
-		card.SetExternalBank(cardFrom, true)
 	}
 
 	_, ok = s.CardSvc.TransferFromCard(cardFrom, totalToTransfer)
 
 	if !ok {
 
-		return totalToTransfer, ErrFromCardNoEnoughMoney, false
+		return totalToTransfer, ErrFromCardNotEnoughMoney, false
 	}
 
 	if cardTo == nil {
@@ -77,7 +88,6 @@ func (s *Service) Card2Card(from, to string, amount int) (total int, err error, 
 		}
 
 		card.SetBankName(cardTo, "ДРУГОЙ БАНК")
-		card.SetExternalBank(cardTo, true)
 	}
 
 	s.CardSvc.TransferToCard(cardTo, amount)
