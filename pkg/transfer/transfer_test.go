@@ -20,9 +20,9 @@ func TestService_Card2Card(t *testing.T) {
 	cardService := card.NewService("БАНК БАБАБАНК")
 
 	cardOne := card.Card{
-		Balance:  1_000_00,
+		Balance:  1_0000_00,
 		Currency: "RUB",
-		Number:   "5106210001",
+		Number:   "4191637314259912",
 		Icon:     "card.png",
 	}
 
@@ -69,97 +69,36 @@ func TestService_Card2Card(t *testing.T) {
 	cardService.AddCard(&cardSix)
 
 	tests := []struct {
-		name      string
-		fields    fields
-		args      args
-		wantErr   error
-		wantTotal int
-		wantOk    bool
+		name    string
+		fields  fields
+		args    args
+		wantErr error
 	}{
 		{
-			name: "Карта-своего-банка->Карта-своего-банка-(денег-достаточно)",
+			name: "Карта-имеет-валидный-номер,-но-не-будет-найдена-потому-что-принадлежит-другому-банку",
 			fields: fields{
 				CardSvc:      cardService,
 				Transactions: nil,
 			},
 			args: args{
-				from:   "5106210001",
-				to:     "5106210002",
+				from:   "4191637314259912",
+				to:     "4191637314259912",
 				amount: 1_000_00,
 			},
-			wantErr:   nil,
-			wantTotal: 1_000_00,
-			wantOk:    true,
-		}, {
-			name: "Карта-своего-банка-->-Карта-своего-банка-(денег-недостаточно)",
+			wantErr: ErrFromCardNotFound,
+		},
+		{
+			name: "Карта-имеет-невалидный-номер",
 			fields: fields{
 				CardSvc:      cardService,
 				Transactions: nil,
 			},
 			args: args{
-				from:   "5106210003",
-				to:     "5106210002",
-				amount: 10_000_00,
+				from:   "4191637314259919",
+				to:     "4191637314259912",
+				amount: 1_000_00,
 			},
-			wantErr:   ErrFromCardNotEnoughMoney,
-			wantTotal: 10_000_00,
-			wantOk:    false,
-		}, {
-			name: "Карта-своего-банка-->-Карта-чужого-банка-(денег-достаточно)",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "5106210004",
-				to:     "0007",
-				amount: 1_500_00,
-			},
-			wantErr:   ErrToCardNotFound,
-			wantTotal: 0,
-			wantOk:    false,
-		}, {
-			name: "Карта-своего-банка-->-Карта-чужого-банка-(денег-недостаточно)",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "5106210006",
-				to:     "0009",
-				amount: 1_500_00,
-			},
-			wantErr:   ErrToCardNotFound,
-			wantTotal: 0,
-			wantOk:    false,
-		}, {
-			name: "Карта-чужого-банка-->-Карта-своего-банка",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "0010",
-				to:     "5106210005",
-				amount: 1_500_00,
-			},
-			wantErr:   ErrFromCardNotFound,
-			wantTotal: 0,
-			wantOk:    false,
-		}, {
-			name: "Карта-чужого-банка-->-Карта-чужого-банка",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "0016",
-				to:     "0011",
-				amount: 1_500_00,
-			},
-			wantErr:   ErrFromCardNotFound,
-			wantTotal: 0,
-			wantOk:    false,
+			wantErr: ErrFromCardNumberNotValid,
 		},
 	}
 	for _, tt := range tests {
@@ -170,19 +109,7 @@ func TestService_Card2Card(t *testing.T) {
 				Transactions: tt.fields.Transactions,
 			}
 
-			gotTotal, gotErr, gotOk := s.Card2Card(tt.args.from, tt.args.to, tt.args.amount)
-
-			// сколько всего надо перевести
-			if gotTotal != tt.wantTotal {
-
-				t.Errorf("Card2Card() gotTotal = %v, want %v", gotTotal, tt.wantTotal)
-			}
-
-			// получилось ли перевести
-			if gotOk != tt.wantOk {
-
-				t.Errorf("Card2Card() gotOk = %v, want %v", gotOk, tt.wantOk)
-			}
+			gotErr := s.Card2Card(tt.args.from, tt.args.to, tt.args.amount)
 
 			// отхватили ли ошибку
 			if gotErr != tt.wantErr {

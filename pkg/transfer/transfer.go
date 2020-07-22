@@ -16,8 +16,10 @@ type Service struct {
 var (
 	ErrFromCardNotEnoughMoney = errors.New("Source card: not enough money")
 	ErrFromCardNotFound       = errors.New("Source card not found")
+	ErrFromCardNumberNotValid = errors.New("Source card number not valid")
 
-	ErrToCardNotFound = errors.New("Target card not found")
+	ErrToCardNotFound       = errors.New("Target card not found")
+	ErrToCardNumberNotValid = errors.New("Target card number not valid")
 )
 
 // конструктор сервиса
@@ -34,16 +36,24 @@ func (s *Service) addTransaction(transaction *transaction.Transaction) {
 }
 
 // перевод с карты на карту
-func (s *Service) Card2Card(from, to string, amount int) (total int, err error, ok bool) {
+func (s *Service) Card2Card(from, to string, amount int) (err error) {
 
-	ok = true
+	if !s.isValid(from) {
+
+		return ErrFromCardNumberNotValid
+	}
+
+	if !s.isValid(to) {
+
+		return ErrToCardNumberNotValid
+	}
 
 	// ищем карту с которой будем преводить
 	cardFrom, ok := s.CardSvc.FindCardByNumber(from)
 
 	if !ok {
 
-		return 0, ErrFromCardNotFound, false
+		return ErrFromCardNotFound
 	}
 
 	// ищем карту с которой будем преводить
@@ -51,7 +61,7 @@ func (s *Service) Card2Card(from, to string, amount int) (total int, err error, 
 
 	if !ok {
 
-		return 0, ErrToCardNotFound, false
+		return ErrToCardNotFound
 	}
 
 	// процент за перевод и минимальная коммисия
@@ -75,7 +85,7 @@ func (s *Service) Card2Card(from, to string, amount int) (total int, err error, 
 
 	if !ok {
 
-		return totalToTransfer, ErrFromCardNotEnoughMoney, false
+		return ErrFromCardNotEnoughMoney
 	}
 
 	if cardTo == nil {
@@ -112,7 +122,7 @@ func (s *Service) Card2Card(from, to string, amount int) (total int, err error, 
 		CardTo:        cardTo,
 	})
 
-	return totalToTransfer, err, ok
+	return nil
 }
 
 // возвращает процент коммисии за перевод и минимальную коммисию за перевод
@@ -142,4 +152,9 @@ func amountPlusCommission(amount int, transferFeePercentage float64, transferFee
 	}
 
 	return amount + internalCommission
+}
+
+func (s *Service) isValid(number string) bool {
+
+	return s.CardSvc.CheckCardNumberByLuna(number)
 }
