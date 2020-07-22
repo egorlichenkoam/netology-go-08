@@ -3,170 +3,135 @@ package transfer
 import (
 	"homework/pkg/card"
 	"homework/pkg/transaction"
+	"reflect"
 	"testing"
 )
 
 func TestService_Card2Card(t *testing.T) {
+
 	type fields struct {
 		CardSvc      *card.Service
 		Transactions []*transaction.Transaction
 	}
+
 	type args struct {
-		from   string
-		to     string
-		amount int
+		from string
+		to   string
 	}
 
 	cardService := card.NewService("БАНК БАБАБАНК")
 
 	cardOne := card.Card{
-		Balance:  1_000_00,
+		Balance:  10_000_00,
 		Currency: "RUB",
-		Number:   "0001",
+		Number:   "5106 2184 1644 4735",
 		Icon:     "card.png",
 	}
 
 	cardTwo := card.Card{
 		Balance:  10_000_00,
 		Currency: "RUB",
-		Number:   "0002",
-		Icon:     "card.png",
-	}
-
-	cardThree := card.Card{
-		Balance:  100_00,
-		Currency: "RUB",
-		Number:   "0003",
-		Icon:     "card.png",
-	}
-
-	cardFour := card.Card{
-		Balance:  2_000_00,
-		Currency: "RUB",
-		Number:   "0004",
-		Icon:     "card.png",
-	}
-
-	cardFive := card.Card{
-		Balance:  10_000_00,
-		Currency: "RUB",
-		Number:   "0005",
-		Icon:     "card.png",
-	}
-
-	cardSix := card.Card{
-		Balance:  100_00,
-		Currency: "RUB",
-		Number:   "0006",
+		Number:   "5106 2132 1882 2113",
 		Icon:     "card.png",
 	}
 
 	cardService.AddCard(&cardOne)
 	cardService.AddCard(&cardTwo)
-	cardService.AddCard(&cardThree)
-	cardService.AddCard(&cardFour)
-	cardService.AddCard(&cardFive)
-	cardService.AddCard(&cardSix)
+
+	transactions := []*transaction.Transaction{
+
+		{
+			Id:            0,
+			Amount:        1000_00,
+			Datetime:      0,
+			OperationType: "from",
+			Status:        true,
+			CardFrom:      &cardOne,
+			CardTo:        &cardTwo,
+		},
+		{
+			Id:            0,
+			Amount:        900_00,
+			Datetime:      0,
+			OperationType: "from",
+			Status:        true,
+			CardFrom:      &cardOne,
+			CardTo:        &cardTwo,
+		},
+		{
+			Id:            0,
+			Amount:        800_00,
+			Datetime:      0,
+			OperationType: "from",
+			Status:        true,
+			CardFrom:      &cardOne,
+			CardTo:        &cardTwo,
+		},
+		{
+			Id:            0,
+			Amount:        700_00,
+			Datetime:      0,
+			OperationType: "from",
+			Status:        true,
+			CardFrom:      &cardOne,
+			CardTo:        &cardTwo,
+		},
+		{
+			Id:            0,
+			Amount:        600_00,
+			Datetime:      0,
+			OperationType: "from",
+			Status:        true,
+			CardFrom:      &cardOne,
+			CardTo:        &cardTwo,
+		},
+	}
 
 	tests := []struct {
-		name      string
-		fields    fields
-		args      args
-		wantTotal int
-		wantOk    bool
+		name   string
+		fields fields
+		args   args
+		want   []*transaction.Transaction
 	}{
 		{
-			name: "Карта своего банка -> Карта своего банка (денег достаточно)",
+			name: "Сортировка транзакций",
 			fields: fields{
 				CardSvc:      cardService,
 				Transactions: nil,
 			},
 			args: args{
-				from:   "0001",
-				to:     "0002",
-				amount: 1_000_00,
+				from: "5106 2184 1644 4735",
+				to:   "5106 2132 1882 2113",
 			},
-			wantTotal: 1_000_00,
-			wantOk:    true,
-		}, {
-			name: "Карта своего банка -> Карта своего банка (денег недостаточно)",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "0003",
-				to:     "0002",
-				amount: 10_000_00,
-			},
-			wantTotal: 10_000_00,
-			wantOk:    false,
-		}, {
-			name: "Карта своего банка -> Карта чужого банка (денег достаточно)",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "0004",
-				to:     "0007",
-				amount: 1_500_00,
-			},
-			wantTotal: 1_510_00,
-			wantOk:    true,
-		}, {
-			name: "Карта своего банка -> Карта чужого банка (денег недостаточно)",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "0006",
-				to:     "0009",
-				amount: 1_500_00,
-			},
-			wantTotal: 1_510_00,
-			wantOk:    false,
-		}, {
-			name: "Карта чужого банка -> Карта своего банка",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "0010",
-				to:     "0005",
-				amount: 1_500_00,
-			},
-			wantTotal: 1_500_00,
-			wantOk:    true,
-		}, {
-			name: "Карта чужого банка -> Карта чужого банка",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "0016",
-				to:     "0011",
-				amount: 1_500_00,
-			},
-			wantTotal: 1_530_00,
-			wantOk:    true,
+			want: transactions,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			s := &Service{
 				CardSvc:      tt.fields.CardSvc,
 				Transactions: tt.fields.Transactions,
 			}
-			gotTotal, gotOk := s.Card2Card(tt.args.from, tt.args.to, tt.args.amount)
-			if gotTotal != tt.wantTotal {
-				t.Errorf("Card2Card() gotTotal = %v, want %v", gotTotal, tt.wantTotal)
+
+			errors := make([]error, 0)
+			errors = append(errors, s.Card2Card(tt.args.from, tt.args.to, 600_00))
+			errors = append(errors, s.Card2Card(tt.args.from, tt.args.to, 900_00))
+			errors = append(errors, s.Card2Card(tt.args.from, tt.args.to, 700_00))
+			errors = append(errors, s.Card2Card(tt.args.from, tt.args.to, 1000_00))
+			errors = append(errors, s.Card2Card(tt.args.from, tt.args.to, 800_00))
+
+			for n := range errors {
+
+				t.Log(errors[n])
 			}
-			if gotOk != tt.wantOk {
-				t.Errorf("Card2Card() gotOk = %v, want %v", gotOk, tt.wantOk)
+
+			cardFrom := s.CardSvc.FindCardByNumber(tt.args.from)
+
+			// проверка совпадает ли сортированый слайс транзакций с требуемым
+			if got := s.GetSortedTransactionsByType(cardFrom, "from"); !reflect.DeepEqual(got, tt.want) {
+
+				t.Errorf("Sum() = %v, want %v", got, tt.want)
 			}
 		})
 	}

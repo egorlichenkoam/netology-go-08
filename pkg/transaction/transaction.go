@@ -4,7 +4,7 @@ import "homework/pkg/card"
 
 type Transaction struct {
 	Id            int
-	Sum           int
+	Amount        int
 	Datetime      int64
 	OperationType string
 	Status        bool
