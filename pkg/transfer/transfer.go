@@ -5,6 +5,8 @@ import (
 	"homework/pkg/card"
 	"homework/pkg/transaction"
 	"sort"
+	"strconv"
+	"time"
 )
 
 // сервис
@@ -27,8 +29,71 @@ func NewService(cardSvc *card.Service) *Service {
 	return &Service{CardSvc: cardSvc}
 }
 
-// возвращает сортированный по amount список транзакций карты по типу (from - расход, to - приход)
-func (s *Service) GetSortedTransactionsByType(card *card.Card, operationType string) (transactions []*transaction.Transaction) {
+func NewServiceWithTransactions(cardSvc *card.Service, transactions []*transaction.Transaction) *Service {
+
+	return &Service{CardSvc: cardSvc, Transactions: transactions}
+}
+
+// возвращает ключ сформированный из времени в виде ГОД_МЕСЯЦ
+func makeYearMonthKey(unixTime int64) string {
+
+	t := time.Unix(unixTime, 0)
+
+	startYear := strconv.Itoa(t.Year())
+
+	startMonth := strconv.Itoa(int(t.Month()))
+
+	if len(startMonth) == 1 {
+
+		startMonth = "0" + startMonth
+	}
+
+	return startYear + "_" + startMonth
+}
+
+// возвращает карту транхакций группированных по месяцу и году
+func (s *Service) GetTransactionsGroupedByMonths(card *card.Card, start, end int64) (result map[string][]*transaction.Transaction) {
+
+	if start < end {
+
+		groupedTransactions := make(map[string][]*transaction.Transaction, 0)
+
+		next := time.Unix(start, 0)
+
+		for next.Before(time.Unix(end, 0)) {
+
+			groupedTransactions[makeYearMonthKey(next.Unix())] = make([]*transaction.Transaction, 0)
+
+			next = next.AddDate(0, 1, 0)
+		}
+
+		groupedTransactions[makeYearMonthKey(end)] = make([]*transaction.Transaction, 0)
+
+		transactions := s.GetTransactionsByType(card, "from")
+
+		for n := range transactions {
+
+			tx := transactions[n]
+
+			mapKey := makeYearMonthKey(tx.Datetime)
+
+			for key, value := range groupedTransactions {
+
+				if key == mapKey {
+
+					groupedTransactions[key] = append(value, tx)
+				}
+			}
+		}
+
+		return groupedTransactions
+	}
+
+	return nil
+}
+
+// возвращает список транзакций карты по типу (from - расход, to - приход)
+func (s *Service) GetTransactionsByType(card *card.Card, operationType string) (transactions []*transaction.Transaction) {
 
 	result := make([]*transaction.Transaction, 0)
 
@@ -42,6 +107,14 @@ func (s *Service) GetSortedTransactionsByType(card *card.Card, operationType str
 		}
 	}
 
+	return result
+}
+
+// возвращает сортированный по amount список транзакций карты по типу (from - расход, to - приход)
+func (s *Service) GetSortedTransactionsByType(card *card.Card, operationType string) (transactions []*transaction.Transaction) {
+
+	result := s.GetTransactionsByType(card, operationType)
+
 	sort.SliceStable(result, func(i, j int) bool {
 		return result[i].Amount > result[j].Amount
 	})
@@ -52,8 +125,7 @@ func (s *Service) GetSortedTransactionsByType(card *card.Card, operationType str
 // добавляет транзакцию
 func (s *Service) addTransaction(transaction *transaction.Transaction) {
 
-	//transaction.Datetime = time.Now().Unix()
-	transaction.Datetime = 0
+	transaction.Datetime = time.Now().Unix()
 
 	s.Transactions = append(s.Transactions, transaction)
 }
