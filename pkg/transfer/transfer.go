@@ -1,9 +1,15 @@
 package transfer
 
 import (
+	"bytes"
+	"encoding/csv"
 	"errors"
 	"homework/pkg/card"
 	"homework/pkg/transaction"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
 	"sort"
 	"strconv"
 	"sync"
@@ -273,7 +279,7 @@ func (s *Service) GetTransactionsByType(card *card.Card, operationType string) (
 
 		tx := s.Transactions[n]
 
-		if tx.CardFrom == card && tx.OperationType == operationType {
+		if tx.CardFrom == card.Number && tx.OperationType == operationType {
 
 			result = append(result, tx)
 		}
@@ -371,8 +377,8 @@ func (s *Service) Card2Card(from, to string, amount int) (err error) {
 		Amount:        totalToTransfer,
 		OperationType: "from",
 		Status:        true,
-		CardFrom:      fromCard,
-		CardTo:        toCard,
+		CardFrom:      fromCard.Number,
+		CardTo:        toCard.Number,
 	})
 
 	_ = s.CardSvc.Transfer(toCard, amount, false)
@@ -383,8 +389,8 @@ func (s *Service) Card2Card(from, to string, amount int) (err error) {
 		Amount:        amount,
 		OperationType: "to",
 		Status:        true,
-		CardFrom:      fromCard,
-		CardTo:        toCard,
+		CardFrom:      fromCard.Number,
+		CardTo:        toCard.Number,
 	})
 
 	return nil
@@ -422,4 +428,103 @@ func amountPlusCommission(amount int, transferFeePercentage float64, transferFee
 func (s *Service) isValid(number string) bool {
 
 	return s.CardSvc.CheckCardNumberByLuna(number)
+}
+
+// экспортирует транзакции в файл
+func (s *Service) ExportTransactions() (err error) {
+
+	err = os.Chdir("temp")
+
+	if err != nil {
+
+		log.Println("Can not open temp catalog", err)
+
+		err = os.Mkdir("temp", os.ModePerm)
+
+		if err != nil {
+
+			log.Println("Can not create temp directory", err)
+
+			return err
+		} else {
+
+			err = os.Chdir("temp")
+		}
+	}
+
+	file, err := os.Create("exports.csv")
+
+	if err != nil {
+
+		log.Println("Can not create file", err)
+
+		return err
+	}
+
+	defer func(c io.Closer) {
+
+		if cerr := c.Close(); cerr != nil {
+
+			log.Println(cerr)
+
+			err = cerr
+		}
+	}(file)
+
+	writer := csv.NewWriter(file)
+
+	defer writer.Flush()
+
+	for _, tx := range s.Transactions {
+
+		err := writer.Write(tx.String())
+
+		if err != nil {
+
+			log.Println("Can not write to file", err)
+		}
+	}
+
+	return err
+}
+
+// испортирует транзакции из файла
+func (s *Service) ImportTransactions(filePath string) (err error) {
+
+	data, err := ioutil.ReadFile(filePath)
+
+	if err != nil {
+
+		log.Println("Can not open import transactions file", err)
+
+		return err
+	}
+
+	reader := csv.NewReader(bytes.NewReader(data))
+
+	records, err := reader.ReadAll()
+
+	if err != nil {
+
+		log.Println("Can not read data from import file", err)
+
+		return err
+	}
+
+	for _, content := range records {
+
+		tx := transaction.Transaction{}
+
+		err = tx.MapRowToTransaction(content)
+
+		if err != nil {
+
+			log.Println("Can not import transaction", err, content)
+		} else {
+
+			s.Transactions = append(s.Transactions, &tx)
+		}
+	}
+
+	return nil
 }

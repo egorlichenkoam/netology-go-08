@@ -1,115 +1,155 @@
 package transfer
 
 import (
+	"bytes"
+	"encoding/csv"
 	"fmt"
 	"homework/pkg/card"
+	"homework/pkg/testdata"
 	"homework/pkg/transaction"
-	"math/rand"
+	"io/ioutil"
+	"log"
+	"os"
 	"reflect"
 	"testing"
-	"time"
 )
 
-// создает карты
-func makeCards() (cards []*card.Card) {
+// тестируем импорт
+func TestService_ImportTransactions(t *testing.T) {
 
-	cardOwnersDatamap := []string{
-		"mister green",
-		"mister blue",
-		"mister grey",
-		"mister yellow",
-		"mister red",
-		"mister gold",
-		"mister white",
-		"mister black",
-		"mister purple",
-		"mister multicolor",
-		"mister pink",
+	cardService := card.NewService("БАНК БАБАБАНК")
+
+	cards := testdata.MakeCards()
+
+	for _, v := range cards {
+
+		cardService.AddCard(v)
 	}
 
-	cardsDataMap := map[string]string{
-		"5106 2184 1644 4735": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2132 1882 2113": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2128 6659 6714": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2176 9107 2252": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2123 5239 5522": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2130 9602 8379": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2121 3543 4895": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2163 9916 2894": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2153 7805 4189": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2120 2303 5804": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2126 1596 2522": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2153 9233 6513": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2166 5150 6119": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2193 5734 7762": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2113 7668 5587": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2174 1863 7700": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
-		"5106 2130 9653 1406": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+	transactions := testdata.MakeTransactions(cards)
+
+	tSvc := Service{
+		CardSvc:      cardService,
+		Transactions: transactions,
 	}
 
-	for k, v := range cardsDataMap {
+	tests := []struct {
+		name            string
+		transferService Service
+		want            error
+	}{
+		{
+			name:            "Импорт-тест",
+			transferService: tSvc,
+			want:            nil,
+		},
+	}
 
-		cards = append(cards, &card.Card{
-			Owner:    v,
-			Balance:  1000_000_00,
-			Currency: "RUB",
-			Number:   k,
-			Icon:     "/icon.png",
+	for _, tt := range tests {
+
+		t.Run(tt.name, func(t *testing.T) {
+
+			_ = tt.transferService.ExportTransactions()
+
+			t.Log("Transactions count export : ", len(tt.transferService.Transactions))
+
+			tt.transferService.Transactions = make([]*transaction.Transaction, 0)
+
+			t.Log("Transactions count clear : ", len(tt.transferService.Transactions))
+
+			dir, _ := os.Getwd()
+
+			if err := tt.transferService.ImportTransactions(dir + "/exports.csv"); err != tt.want {
+
+				t.Errorf("ExportTransactions() gotErr = %v, want %v", err, tt.want)
+			}
+
+			t.Log("Transactions count import : ", len(tt.transferService.Transactions))
+
+			tt.transferService.Transactions = make([]*transaction.Transaction, 0)
+
+			t.Log("Transactions count clear : ", len(tt.transferService.Transactions))
+
+			data, err := ioutil.ReadFile(dir + "/exports.csv")
+
+			if err != nil {
+
+				log.Println("Can not open import transactions file", err)
+			}
+
+			reader := csv.NewReader(bytes.NewReader(data))
+
+			records, err := reader.ReadAll()
+
+			if err != nil {
+
+				log.Println("Can not read data from import file", err)
+			}
+
+			for _, content := range records {
+
+				tx := transaction.Transaction{}
+
+				if err := tx.MapRowToTransaction(content); err != tt.want {
+
+					t.Errorf("MapRowToTransaction() gotErr = %v, want %v", err, tt.want)
+				}
+
+				if err != nil {
+
+					log.Println("Can not import transaction", err, content)
+				} else {
+
+					tt.transferService.Transactions = append(tt.transferService.Transactions, &tx)
+				}
+			}
+
+			t.Log("Transactions count import : ", len(tt.transferService.Transactions))
 		})
-
 	}
-
-	return cards
 }
 
-// генерирует транзакции
-func makeTransactions(cards []*card.Card) (transactions []*transaction.Transaction) {
+// тестируем экпорт транзакций
+func TestService_ExportTransactions(t *testing.T) {
 
-	cardsCount := len(cards)
+	cardService := card.NewService("БАНК БАБАБАНК")
 
-	transactions = make([]*transaction.Transaction, 1000000)
+	cards := testdata.MakeCards()
 
-	transactionAmount := 10_00
+	for _, v := range cards {
 
-	for i := range transactions {
-
-		tx := transaction.Transaction{
-			Id:            0,
-			Amount:        rand.Intn(transactionAmount),
-			Datetime:      time.Now().Unix(),
-			OperationType: "from",
-			Status:        true,
-			Mcc:           0,
-			CardFrom:      cards[rand.Intn(cardsCount)],
-			CardTo:        cards[rand.Intn(cardsCount)],
-		}
-
-		switch i % 10 {
-
-		case 0:
-			tx.Mcc = 4112
-		case 1:
-			tx.Mcc = 4121
-		case 2:
-			tx.Mcc = 4131
-		case 3:
-			tx.Mcc = 4225
-		case 4:
-			tx.Mcc = 4789
-		case 5:
-			tx.Mcc = 4821
-		case 6:
-			tx.Mcc = 4899
-		case 7:
-			tx.Mcc = 5044
-		default:
-			tx.Mcc = 5013
-		}
-
-		transactions[i] = &tx
+		cardService.AddCard(v)
 	}
 
-	return transactions
+	transactions := testdata.MakeTransactions(cards)
+
+	tSvc := Service{
+		CardSvc:      cardService,
+		Transactions: transactions,
+	}
+
+	tests := []struct {
+		name            string
+		transferService Service
+		want            error
+	}{
+		{
+			name:            "Экспорт-тест",
+			transferService: tSvc,
+			want:            nil,
+		},
+	}
+
+	for _, tt := range tests {
+
+		t.Run(tt.name, func(t *testing.T) {
+
+			if err := tt.transferService.ExportTransactions(); err != nil {
+
+				t.Errorf("ExportTransactions() gotErr = %v, want %v", err, tt.want)
+			}
+		})
+	}
 }
 
 func TestService_Card2Card(t *testing.T) {
@@ -121,14 +161,14 @@ func TestService_Card2Card(t *testing.T) {
 
 	cardService := card.NewService("БАНК БАБАБАНК")
 
-	cards := makeCards()
+	cards := testdata.MakeCards()
 
 	for _, v := range cards {
 
 		cardService.AddCard(v)
 	}
 
-	transactions := makeTransactions(cards)
+	transactions := testdata.MakeTransactions(cards)
 
 	tests := []struct {
 		name   string
@@ -232,14 +272,14 @@ func BenchmarkMutexByCard(b *testing.B) {
 
 	cardService := card.NewService("БАНК БАБАБАНК")
 
-	cards := makeCards()
+	cards := testdata.MakeCards()
 
 	for _, v := range cards {
 
 		cardService.AddCard(v)
 	}
 
-	transactions := makeTransactions(cards)
+	transactions := testdata.MakeTransactions(cards)
 
 	s := &Service{
 		CardSvc:      cardService,
@@ -277,14 +317,14 @@ func BenchmarkMutexByOwner(b *testing.B) {
 
 	cardService := card.NewService("БАНК БАБАБАНК")
 
-	cards := makeCards()
+	cards := testdata.MakeCards()
 
 	for _, v := range cards {
 
 		cardService.AddCard(v)
 	}
 
-	transactions := makeTransactions(cards)
+	transactions := testdata.MakeTransactions(cards)
 
 	s := &Service{
 		CardSvc:      cardService,
@@ -322,14 +362,14 @@ func BenchmarkChannelsByCard(b *testing.B) {
 
 	cardService := card.NewService("БАНК БАБАБАНК")
 
-	cards := makeCards()
+	cards := testdata.MakeCards()
 
 	for _, v := range cards {
 
 		cardService.AddCard(v)
 	}
 
-	transactions := makeTransactions(cards)
+	transactions := testdata.MakeTransactions(cards)
 
 	s := &Service{
 		CardSvc:      cardService,
@@ -367,14 +407,14 @@ func BenchmarkChannelsByOwner(b *testing.B) {
 
 	cardService := card.NewService("БАНК БАБАБАНК")
 
-	cards := makeCards()
+	cards := testdata.MakeCards()
 
 	for _, v := range cards {
 
 		cardService.AddCard(v)
 	}
 
-	transactions := makeTransactions(cards)
+	transactions := testdata.MakeTransactions(cards)
 
 	s := &Service{
 		CardSvc:      cardService,
@@ -412,14 +452,14 @@ func BenchmarkMutexStraightToMapByCard(b *testing.B) {
 
 	cardService := card.NewService("БАНК БАБАБАНК")
 
-	cards := makeCards()
+	cards := testdata.MakeCards()
 
 	for _, v := range cards {
 
 		cardService.AddCard(v)
 	}
 
-	transactions := makeTransactions(cards)
+	transactions := testdata.MakeTransactions(cards)
 
 	s := &Service{
 		CardSvc:      cardService,
@@ -457,14 +497,14 @@ func BenchmarkMutexStraightToMapByOwner(b *testing.B) {
 
 	cardService := card.NewService("БАНК БАБАБАНК")
 
-	cards := makeCards()
+	cards := testdata.MakeCards()
 
 	for _, v := range cards {
 
 		cardService.AddCard(v)
 	}
 
-	transactions := makeTransactions(cards)
+	transactions := testdata.MakeTransactions(cards)
 
 	s := &Service{
 		CardSvc:      cardService,
