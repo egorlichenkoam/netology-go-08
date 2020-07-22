@@ -1,6 +1,7 @@
 package card
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 )
@@ -15,15 +16,15 @@ type Card struct {
 	Icon     string
 }
 
+var (
+	ErrFromCardNotEnoughMoney = errors.New("Source card: not enough money")
+)
+
 // сервис
 type Service struct {
 	BankName string
 	Cards    []*Card
 }
-
-var (
-	cardnumber_prefix = "510621"
-)
 
 // конструктор
 func NewService(bankName string) *Service {
@@ -39,7 +40,7 @@ func (s *Service) AddCard(card *Card) {
 }
 
 // возвращает карту по номеру карты или nil
-func (s *Service) FindCardByNumber(number string) (card *Card, ok bool) {
+func (s *Service) FindCardByNumber(number string) (card *Card) {
 
 	if isCardInternal(number) {
 
@@ -52,44 +53,30 @@ func (s *Service) FindCardByNumber(number string) (card *Card, ok bool) {
 			}
 		}
 
-		if cardInternal == nil {
+		return cardInternal
+	}
 
-			cardInternal := &Card{
-				Balance:  0,
-				Currency: "RUB",
-				Number:   number,
-				Icon:     "card.png",
-			}
+	return nil
+}
 
-			s.AddCard(cardInternal)
+// перенос средст: transferFrom = true - с карты, transferFrom = false - на карту
+func (s *Service) Transfer(card *Card, amount int, transferFrom bool) (err error) {
+
+	if transferFrom {
+
+		if card.Balance >= amount {
+
+			card.Balance -= amount
+		} else {
+
+			err = ErrFromCardNotEnoughMoney
 		}
+	} else {
 
-		return cardInternal, true
+		card.Balance += amount
 	}
 
-	return nil, false
-}
-
-// спивывает с карты средства и возвращает текущий баланс и метку выполнена операция или нет
-func (s *Service) TransferFromCard(cardFrom *Card, amount int) (balance int, ok bool) {
-
-	result := false
-
-	if cardFrom.Balance >= amount {
-
-		cardFrom.Balance -= amount
-		result = true
-	}
-
-	return cardFrom.Balance, result
-}
-
-// зачисляет на карту средства и возвращает текущий баланс и метку выполнена операция или нет
-func (s *Service) TransferToCard(cardTo *Card, amount int) (balance int, ok bool) {
-
-	cardTo.Balance += amount
-
-	return cardTo.Balance, true
+	return err
 }
 
 // устанаваливает наименование банка
@@ -106,7 +93,7 @@ func isCardInternal(number string) bool {
 		return true
 	}
 
-	return false
+	return true
 }
 
 // возвращает метку валидности номера карты поалгоритмы Луна (упрощенному)

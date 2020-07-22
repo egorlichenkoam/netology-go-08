@@ -4,7 +4,7 @@ import (
 	"errors"
 	"homework/pkg/card"
 	"homework/pkg/transaction"
-	"time"
+	"sort"
 )
 
 // сервис
@@ -14,7 +14,6 @@ type Service struct {
 }
 
 var (
-	ErrFromCardNotEnoughMoney = errors.New("Source card: not enough money")
 	ErrFromCardNotFound       = errors.New("Source card not found")
 	ErrFromCardNumberNotValid = errors.New("Source card number not valid")
 
@@ -24,19 +23,43 @@ var (
 
 // конструктор сервиса
 func NewService(cardSvc *card.Service) *Service {
+
 	return &Service{CardSvc: cardSvc}
+}
+
+// возвращает сортированный по amount список транзакций карты по типу (from - расход, to - приход)
+func (s *Service) GetSortedTransactionsByType(card *card.Card, operationType string) (transactions []*transaction.Transaction) {
+
+	result := make([]*transaction.Transaction, 0)
+
+	for n := range s.Transactions {
+
+		tx := s.Transactions[n]
+
+		if tx.CardFrom == card && tx.OperationType == operationType {
+
+			result = append(result, tx)
+		}
+	}
+
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].Amount > result[j].Amount
+	})
+
+	return result
 }
 
 // добавляет транзакцию
 func (s *Service) addTransaction(transaction *transaction.Transaction) {
 
-	transaction.Datetime = time.Now().Unix()
+	//transaction.Datetime = time.Now().Unix()
+	transaction.Datetime = 0
 
 	s.Transactions = append(s.Transactions, transaction)
 }
 
-// перевод с карты на карту
-func (s *Service) Card2Card(from, to string, amount int) (err error) {
+// валидирует номера карт
+func (s *Service) validateCards(from, to string) (err error) {
 
 	if !s.isValid(from) {
 
@@ -48,78 +71,76 @@ func (s *Service) Card2Card(from, to string, amount int) (err error) {
 		return ErrToCardNumberNotValid
 	}
 
+	return nil
+}
+
+// ищем карты в сервисе
+func (s *Service) searchCards(from, to string) (err error, fromCard, toCard *card.Card) {
+
 	// ищем карту с которой будем преводить
-	cardFrom, ok := s.CardSvc.FindCardByNumber(from)
+	toCard = s.CardSvc.FindCardByNumber(to)
 
-	if !ok {
+	if toCard == nil {
 
-		return ErrFromCardNotFound
+		err = ErrToCardNotFound
 	}
 
 	// ищем карту с которой будем преводить
-	cardTo, ok := s.CardSvc.FindCardByNumber(to)
+	fromCard = s.CardSvc.FindCardByNumber(from)
 
-	if !ok {
+	if fromCard == nil {
 
-		return ErrToCardNotFound
+		err = ErrFromCardNotFound
+	}
+
+	return err, fromCard, toCard
+}
+
+// перевод с карты на карту
+func (s *Service) Card2Card(from, to string, amount int) (err error) {
+
+	if err = s.validateCards(from, to); err != nil {
+
+		return err
+	}
+
+	err, fromCard, toCard := s.searchCards(from, to)
+
+	if err != nil {
+
+		return err
 	}
 
 	// процент за перевод и минимальная коммисия
-	transferFeePercentage, transferFeeMin := transferFeePercentageAndMinimum(cardFrom, cardTo)
+	transferFeePercentage, transferFeeMin := transferFeePercentageAndMinimum(fromCard, toCard)
 
 	totalToTransfer := amountPlusCommission(amount, transferFeePercentage, transferFeeMin)
 
-	if cardFrom == nil {
+	if err = s.CardSvc.Transfer(fromCard, totalToTransfer, true); err != nil {
 
-		cardFrom = &card.Card{
-			Balance:  0,
-			Currency: "RUB",
-			Number:   from,
-			Icon:     "card.png",
-		}
-
-		card.SetBankName(cardFrom, "ДРУГОЙ БАНК")
+		return err
 	}
-
-	_, ok = s.CardSvc.TransferFromCard(cardFrom, totalToTransfer)
-
-	if !ok {
-
-		return ErrFromCardNotEnoughMoney
-	}
-
-	if cardTo == nil {
-
-		cardTo = &card.Card{
-			Balance:  0,
-			Currency: "RUB",
-			Number:   to,
-			Icon:     "card.png",
-		}
-
-		card.SetBankName(cardTo, "ДРУГОЙ БАНК")
-	}
-
-	s.CardSvc.TransferToCard(cardTo, amount)
 
 	// транзакция для списания
 	s.addTransaction(&transaction.Transaction{
 		Id:            0,
-		Sum:           totalToTransfer,
+		Amount:        totalToTransfer,
 		OperationType: "from",
-		Status:        ok,
-		CardFrom:      cardFrom,
-		CardTo:        cardTo,
+		Status:        true,
+		CardFrom:      fromCard,
+		CardTo:        toCard,
 	})
+
+	_ = s.CardSvc.Transfer(toCard, amount, false)
 
 	// транзакция для зачисления
 	s.addTransaction(&transaction.Transaction{
 		Id:            0,
-		Sum:           amount,
+		Amount:        amount,
 		OperationType: "to",
-		Status:        ok,
-		CardFrom:      cardFrom,
-		CardTo:        cardTo,
+		Status:        true,
+		CardFrom:      fromCard,
+		CardTo:        toCard,
 	})
 
 	return nil

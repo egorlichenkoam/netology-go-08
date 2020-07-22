@@ -3,102 +3,107 @@ package transfer
 import (
 	"homework/pkg/card"
 	"homework/pkg/transaction"
+	"reflect"
 	"testing"
 )
 
 func TestService_Card2Card(t *testing.T) {
+
 	type fields struct {
 		CardSvc      *card.Service
 		Transactions []*transaction.Transaction
 	}
+
 	type args struct {
-		from   string
-		to     string
-		amount int
+		from string
+		to   string
 	}
 
 	cardService := card.NewService("БАНК БАБАБАНК")
 
 	cardOne := card.Card{
-		Balance:  1_0000_00,
+		Balance:  10_000_00,
 		Currency: "RUB",
-		Number:   "4191637314259912",
+		Number:   "5106 2184 1644 4735",
 		Icon:     "card.png",
 	}
 
 	cardTwo := card.Card{
 		Balance:  10_000_00,
 		Currency: "RUB",
-		Number:   "5106210002",
-		Icon:     "card.png",
-	}
-
-	cardThree := card.Card{
-		Balance:  100_00,
-		Currency: "RUB",
-		Number:   "5106210003",
-		Icon:     "card.png",
-	}
-
-	cardFour := card.Card{
-		Balance:  2_000_00,
-		Currency: "RUB",
-		Number:   "5106210004",
-		Icon:     "card.png",
-	}
-
-	cardFive := card.Card{
-		Balance:  10_000_00,
-		Currency: "RUB",
-		Number:   "5106210005",
-		Icon:     "card.png",
-	}
-
-	cardSix := card.Card{
-		Balance:  100_00,
-		Currency: "RUB",
-		Number:   "5106210006",
+		Number:   "5106 2132 1882 2113",
 		Icon:     "card.png",
 	}
 
 	cardService.AddCard(&cardOne)
 	cardService.AddCard(&cardTwo)
-	cardService.AddCard(&cardThree)
-	cardService.AddCard(&cardFour)
-	cardService.AddCard(&cardFive)
-	cardService.AddCard(&cardSix)
 
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr error
-	}{
+	transactions := []*transaction.Transaction{
+
 		{
-			name: "Карта-имеет-валидный-номер,-но-не-будет-найдена-потому-что-принадлежит-другому-банку",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: nil,
-			},
-			args: args{
-				from:   "4191637314259912",
-				to:     "4191637314259912",
-				amount: 1_000_00,
-			},
-			wantErr: ErrFromCardNotFound,
+			Id:            0,
+			Amount:        1000_00,
+			Datetime:      0,
+			OperationType: "from",
+			Status:        true,
+			CardFrom:      &cardOne,
+			CardTo:        &cardTwo,
 		},
 		{
-			name: "Карта-имеет-невалидный-номер",
+			Id:            0,
+			Amount:        900_00,
+			Datetime:      0,
+			OperationType: "from",
+			Status:        true,
+			CardFrom:      &cardOne,
+			CardTo:        &cardTwo,
+		},
+		{
+			Id:            0,
+			Amount:        800_00,
+			Datetime:      0,
+			OperationType: "from",
+			Status:        true,
+			CardFrom:      &cardOne,
+			CardTo:        &cardTwo,
+		},
+		{
+			Id:            0,
+			Amount:        700_00,
+			Datetime:      0,
+			OperationType: "from",
+			Status:        true,
+			CardFrom:      &cardOne,
+			CardTo:        &cardTwo,
+		},
+		{
+			Id:            0,
+			Amount:        600_00,
+			Datetime:      0,
+			OperationType: "from",
+			Status:        true,
+			CardFrom:      &cardOne,
+			CardTo:        &cardTwo,
+		},
+	}
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   []*transaction.Transaction
+	}{
+		{
+			name: "Сортировка транзакций",
 			fields: fields{
 				CardSvc:      cardService,
 				Transactions: nil,
 			},
 			args: args{
-				from:   "4191637314259919",
-				to:     "4191637314259912",
-				amount: 1_000_00,
+				from: "5106 2184 1644 4735",
+				to:   "5106 2132 1882 2113",
 			},
-			wantErr: ErrFromCardNumberNotValid,
+			want: transactions,
 		},
 	}
 	for _, tt := range tests {
@@ -109,12 +114,24 @@ func TestService_Card2Card(t *testing.T) {
 				Transactions: tt.fields.Transactions,
 			}
 
-			gotErr := s.Card2Card(tt.args.from, tt.args.to, tt.args.amount)
+			errors := make([]error, 0)
+			errors = append(errors, s.Card2Card(tt.args.from, tt.args.to, 600_00))
+			errors = append(errors, s.Card2Card(tt.args.from, tt.args.to, 900_00))
+			errors = append(errors, s.Card2Card(tt.args.from, tt.args.to, 700_00))
+			errors = append(errors, s.Card2Card(tt.args.from, tt.args.to, 1000_00))
+			errors = append(errors, s.Card2Card(tt.args.from, tt.args.to, 800_00))
 
-			// отхватили ли ошибку
-			if gotErr != tt.wantErr {
+			for n := range errors {
 
-				t.Errorf("Card2Card() gotErr = %v, want %v", gotErr, tt.wantErr)
+				t.Log(errors[n])
+			}
+
+			cardFrom := s.CardSvc.FindCardByNumber(tt.args.from)
+
+			// проверка совпадает ли сортированый слайс транзакций с требуемым
+			if got := s.GetSortedTransactionsByType(cardFrom, "from"); !reflect.DeepEqual(got, tt.want) {
+
+				t.Errorf("Sum() = %v, want %v", got, tt.want)
 			}
 		})
 	}
