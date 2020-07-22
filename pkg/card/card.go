@@ -9,6 +9,7 @@ import (
 // карта
 type Card struct {
 	id       int
+	Owner    string
 	issuer   string
 	Balance  int
 	Currency string

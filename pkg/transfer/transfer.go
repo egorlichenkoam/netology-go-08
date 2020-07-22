@@ -6,6 +6,7 @@ import (
 	"homework/pkg/transaction"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -49,6 +50,161 @@ func makeYearMonthKey(unixTime int64) string {
 	}
 
 	return startYear + "_" + startMonth
+}
+
+// возвращает карту mcc кодов c суммами затрат по ним используя mutex и пишет прямо в результатирующую карту
+func (s *Service) GetMccTransactionsSumAmountMapByCardWithMutexStraightToMap(transactions []*transaction.Transaction) (result map[int]int) {
+
+	partCount := 10
+
+	wg := sync.WaitGroup{}
+
+	wg.Add(partCount)
+
+	mu := sync.Mutex{}
+
+	result = make(map[int]int)
+
+	partSize := len(transactions) / partCount
+
+	for i := 0; i < partCount; i++ {
+
+		part := transactions[i*partSize : (i+1)*partSize]
+
+		if i == partCount-1 {
+
+			for _, value := range transactions[(i+1)*partSize:] {
+
+				part = append(part, value)
+			}
+		}
+
+		go func() {
+
+			for _, tx := range part {
+
+				mu.Lock()
+
+				result[tx.Mcc] += tx.Amount
+
+				mu.Unlock()
+			}
+
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+
+	return result
+}
+
+// возвращает карту mcc кодов c суммами затрат по ним используя Channels
+func (s *Service) GetMccTransactionsSumAmountMapByCardWithChannels(transactions []*transaction.Transaction) (result map[int]int) {
+
+	partCount := 10
+
+	result = make(map[int]int)
+
+	chMap := make(chan map[int]int)
+
+	partSize := len(transactions) / partCount
+
+	for i := 0; i < partCount; i++ {
+
+		part := transactions[i*partSize : (i+1)*partSize]
+
+		if i == partCount-1 {
+
+			for _, value := range transactions[(i+1)*partSize:] {
+
+				part = append(part, value)
+			}
+		}
+		go func(chMap chan<- map[int]int) {
+
+			chMap <- s.GetMccTransactionsSumAmountMapByCard(part)
+
+		}(chMap)
+	}
+
+	finished := 0
+
+	for value := range chMap {
+
+		for key, value := range value {
+
+			result[key] += value
+		}
+
+		finished++
+
+		if finished == partCount {
+			break
+		}
+	}
+	return result
+}
+
+// возвращает карту mcc кодов c суммами затрат по ним используя mutex
+func (s *Service) GetMccTransactionsSumAmountMapByCardWithMutex(transactions []*transaction.Transaction) (result map[int]int) {
+
+	partCount := 10
+
+	wg := sync.WaitGroup{}
+
+	wg.Add(partCount)
+
+	mu := sync.Mutex{}
+
+	result = make(map[int]int)
+
+	partSize := len(transactions) / partCount
+
+	for i := 0; i < partCount; i++ {
+
+		part := transactions[i*partSize : (i+1)*partSize]
+
+		if i == partCount-1 {
+
+			for _, value := range transactions[(i+1)*partSize:] {
+
+				part = append(part, value)
+			}
+		}
+		go func() {
+
+			m := s.GetMccTransactionsSumAmountMapByCard(part)
+
+			mu.Lock()
+
+			for key, value := range m {
+
+				result[key] += value
+			}
+
+			mu.Unlock()
+
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+
+	return result
+}
+
+// возвращает карту mcc кодов c суммами затрат по ним
+func (s *Service) GetMccTransactionsSumAmountMapByCard(transactions []*transaction.Transaction) (result map[int]int) {
+
+	result = make(map[int]int)
+
+	for _, tx := range transactions {
+
+		result[tx.Mcc] += tx.Amount
+	}
+
+	return result
 }
 
 // возвращает карту транхакций группированных по месяцу и году
