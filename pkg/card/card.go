@@ -32,6 +32,35 @@ func NewService(bankName string) *Service {
 	return &Service{BankName: bankName}
 }
 
+// возвращаем всех владельцев карт и их карты
+func (s *Service) Owners() (result map[string][]*Card) {
+
+	result = make(map[string][]*Card)
+
+	for _, c := range s.Cards {
+
+		result[c.Owner] = append(result[c.Owner], c)
+	}
+
+	return result
+}
+
+// возвращает карты владельца
+func (s *Service) OwnerCards(owner string) (result []*Card) {
+
+	result = make([]*Card, 0)
+
+	for cardOwner, cards := range s.Owners() {
+
+		if cardOwner == owner {
+
+			result = append(result, cards...)
+		}
+	}
+
+	return result
+}
+
 // добавляет карту
 func (s *Service) AddCard(card *Card) {
 

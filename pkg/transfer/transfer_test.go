@@ -5,6 +5,7 @@ import (
 	"homework/pkg/card"
 	"homework/pkg/transaction"
 	"math/rand"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -12,10 +13,38 @@ import (
 // создает карты
 func makeCards() (cards []*card.Card) {
 
+	cardOwnersDatamap := []string{
+		"mister green",
+		"mister blue",
+		"mister grey",
+		"mister yellow",
+		"mister red",
+		"mister gold",
+		"mister white",
+		"mister black",
+		"mister purple",
+		"mister multicolor",
+		"mister pink",
+	}
+
 	cardsDataMap := map[string]string{
-		"5106 2184 1644 4735": "mister red",
-		"5106 2132 1882 2113": "mister blue",
-		"5106 2128 6659 6714": "mister green",
+		"5106 2184 1644 4735": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2132 1882 2113": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2128 6659 6714": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2176 9107 2252": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2123 5239 5522": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2130 9602 8379": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2121 3543 4895": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2163 9916 2894": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2153 7805 4189": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2120 2303 5804": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2126 1596 2522": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2153 9233 6513": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2166 5150 6119": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2193 5734 7762": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2113 7668 5587": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2174 1863 7700": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
+		"5106 2130 9653 1406": cardOwnersDatamap[rand.Intn(len(cardOwnersDatamap))],
 	}
 
 	for k, v := range cardsDataMap {
@@ -38,9 +67,9 @@ func makeTransactions(cards []*card.Card) (transactions []*transaction.Transacti
 
 	cardsCount := len(cards)
 
-	transactions = make([]*transaction.Transaction, 10000)
+	transactions = make([]*transaction.Transaction, 1000000)
 
-	transactionAmount := 100_00
+	transactionAmount := 10_00
 
 	for i := range transactions {
 
@@ -90,10 +119,6 @@ func TestService_Card2Card(t *testing.T) {
 		Transactions []*transaction.Transaction
 	}
 
-	type args struct {
-		cardNumber string
-	}
-
 	cardService := card.NewService("БАНК БАБАБАНК")
 
 	cards := makeCards()
@@ -108,16 +133,12 @@ func TestService_Card2Card(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		args   args
 	}{
 		{
 			name: "Вывод группированных по MCC затрат без ",
 			fields: fields{
 				CardSvc:      cardService,
 				Transactions: transactions,
-			},
-			args: args{
-				cardNumber: cards[rand.Intn(len(cards))].Number,
 			},
 		},
 	}
@@ -132,31 +153,71 @@ func TestService_Card2Card(t *testing.T) {
 			for _, c := range s.CardSvc.Cards {
 
 				fmt.Println("")
+				fmt.Println("OWNER : ", c.Owner)
 				fmt.Println("CARD NUMBER : ", c.Number)
 				fmt.Println("")
 
-				mccTransactionSumAmountMap := s.GetMccTransactionsSumAmountMapByCard(s.GetTransactionsByType(c, "from"))
+				mccTransactionSumAmountMap := s.GetMccTransactionsSumAmountMap(s.GetTransactionsByType(c, "from"))
 
 				fmt.Println("SIMPLE")
 				fmt.Println("------------------------")
 				fmt.Println(mccTransactionSumAmountMap)
 				fmt.Println("------------------------")
 
-				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapByCardWithMutex(s.GetTransactionsByType(c, "from"))
+				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapWithMutex(s.GetTransactionsByType(c, "from"))
 
 				fmt.Println("MUTEX")
 				fmt.Println("------------------------")
 				fmt.Println(mccTransactionSumAmountMap)
 				fmt.Println("------------------------")
 
-				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapByCardWithChannels(s.GetTransactionsByType(c, "from"))
+				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapWithChannels(s.GetTransactionsByType(c, "from"))
 
 				fmt.Println("CHANNELS")
 				fmt.Println("------------------------")
 				fmt.Println(mccTransactionSumAmountMap)
 				fmt.Println("------------------------")
 
-				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapByCardWithMutexStraightToMap(s.GetTransactionsByType(c, "from"))
+				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapWithMutexStraightToMap(s.GetTransactionsByType(c, "from"))
+
+				fmt.Println("MUTEXSTRAIGHTTOMAP")
+				fmt.Println("------------------------")
+				fmt.Println(mccTransactionSumAmountMap)
+				fmt.Println("------------------------")
+			}
+
+			for owner, cards := range s.CardSvc.Owners() {
+
+				fmt.Println("")
+				fmt.Println("OWNER : ", owner)
+				fmt.Println("")
+
+				fmt.Println("")
+				fmt.Println("CARDS COUNT : ", len(cards))
+				fmt.Println("")
+
+				mccTransactionSumAmountMap := s.GetMccTransactionsSumAmountMap(s.GetTransactionsByTypeAndOwner(owner, "from"))
+
+				fmt.Println("SIMPLE")
+				fmt.Println("------------------------")
+				fmt.Println(mccTransactionSumAmountMap)
+				fmt.Println("------------------------")
+
+				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapWithMutex(s.GetTransactionsByTypeAndOwner(owner, "from"))
+
+				fmt.Println("MUTEX")
+				fmt.Println("------------------------")
+				fmt.Println(mccTransactionSumAmountMap)
+				fmt.Println("------------------------")
+
+				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapWithChannels(s.GetTransactionsByTypeAndOwner(owner, "from"))
+
+				fmt.Println("CHANNELS")
+				fmt.Println("------------------------")
+				fmt.Println(mccTransactionSumAmountMap)
+				fmt.Println("------------------------")
+
+				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapWithMutexStraightToMap(s.GetTransactionsByTypeAndOwner(owner, "from"))
 
 				fmt.Println("MUTEXSTRAIGHTTOMAP")
 				fmt.Println("------------------------")
@@ -164,5 +225,275 @@ func TestService_Card2Card(t *testing.T) {
 				fmt.Println("------------------------")
 			}
 		})
+	}
+}
+
+func BenchmarkMutexByCard(b *testing.B) {
+
+	cardService := card.NewService("БАНК БАБАБАНК")
+
+	cards := makeCards()
+
+	for _, v := range cards {
+
+		cardService.AddCard(v)
+	}
+
+	transactions := makeTransactions(cards)
+
+	s := &Service{
+		CardSvc:      cardService,
+		Transactions: transactions,
+	}
+
+	want := make(map[string]map[int]int)
+
+	for _, c := range s.CardSvc.Cards {
+
+		want[c.Number] = s.GetMccTransactionsSumAmountMap(s.GetTransactionsByType(c, "from"))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		result := make(map[string]map[int]int)
+
+		for _, c := range s.CardSvc.Cards {
+
+			result[c.Number] = s.GetMccTransactionsSumAmountMapWithMutex(s.GetTransactionsByType(c, "from"))
+		}
+		b.StopTimer()
+
+		if !reflect.DeepEqual(result, want) {
+
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+
+		b.StartTimer()
+	}
+}
+
+func BenchmarkMutexByOwner(b *testing.B) {
+
+	cardService := card.NewService("БАНК БАБАБАНК")
+
+	cards := makeCards()
+
+	for _, v := range cards {
+
+		cardService.AddCard(v)
+	}
+
+	transactions := makeTransactions(cards)
+
+	s := &Service{
+		CardSvc:      cardService,
+		Transactions: transactions,
+	}
+
+	want := make(map[string]map[int]int)
+
+	for owner := range s.CardSvc.Owners() {
+
+		want[owner] = s.GetMccTransactionsSumAmountMap(s.GetTransactionsByTypeAndOwner(owner, "from"))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		result := make(map[string]map[int]int)
+
+		for owner := range s.CardSvc.Owners() {
+
+			result[owner] = s.GetMccTransactionsSumAmountMapWithMutex(s.GetTransactionsByTypeAndOwner(owner, "from"))
+		}
+		b.StopTimer()
+
+		if !reflect.DeepEqual(result, want) {
+
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+
+		b.StartTimer()
+	}
+}
+
+func BenchmarkChannelsByCard(b *testing.B) {
+
+	cardService := card.NewService("БАНК БАБАБАНК")
+
+	cards := makeCards()
+
+	for _, v := range cards {
+
+		cardService.AddCard(v)
+	}
+
+	transactions := makeTransactions(cards)
+
+	s := &Service{
+		CardSvc:      cardService,
+		Transactions: transactions,
+	}
+
+	want := make(map[string]map[int]int)
+
+	for _, c := range s.CardSvc.Cards {
+
+		want[c.Number] = s.GetMccTransactionsSumAmountMap(s.GetTransactionsByType(c, "from"))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		result := make(map[string]map[int]int)
+
+		for _, c := range s.CardSvc.Cards {
+
+			result[c.Number] = s.GetMccTransactionsSumAmountMapWithChannels(s.GetTransactionsByType(c, "from"))
+		}
+		b.StopTimer()
+
+		if !reflect.DeepEqual(result, want) {
+
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+
+		b.StartTimer()
+	}
+}
+
+func BenchmarkChannelsByOwner(b *testing.B) {
+
+	cardService := card.NewService("БАНК БАБАБАНК")
+
+	cards := makeCards()
+
+	for _, v := range cards {
+
+		cardService.AddCard(v)
+	}
+
+	transactions := makeTransactions(cards)
+
+	s := &Service{
+		CardSvc:      cardService,
+		Transactions: transactions,
+	}
+
+	want := make(map[string]map[int]int)
+
+	for owner := range s.CardSvc.Owners() {
+
+		want[owner] = s.GetMccTransactionsSumAmountMap(s.GetTransactionsByTypeAndOwner(owner, "from"))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		result := make(map[string]map[int]int)
+
+		for owner := range s.CardSvc.Owners() {
+
+			result[owner] = s.GetMccTransactionsSumAmountMapWithChannels(s.GetTransactionsByTypeAndOwner(owner, "from"))
+		}
+		b.StopTimer()
+
+		if !reflect.DeepEqual(result, want) {
+
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+
+		b.StartTimer()
+	}
+}
+
+func BenchmarkMutexStraightToMapByCard(b *testing.B) {
+
+	cardService := card.NewService("БАНК БАБАБАНК")
+
+	cards := makeCards()
+
+	for _, v := range cards {
+
+		cardService.AddCard(v)
+	}
+
+	transactions := makeTransactions(cards)
+
+	s := &Service{
+		CardSvc:      cardService,
+		Transactions: transactions,
+	}
+
+	want := make(map[string]map[int]int)
+
+	for _, c := range s.CardSvc.Cards {
+
+		want[c.Number] = s.GetMccTransactionsSumAmountMap(s.GetTransactionsByType(c, "from"))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		result := make(map[string]map[int]int)
+
+		for _, c := range s.CardSvc.Cards {
+
+			result[c.Number] = s.GetMccTransactionsSumAmountMapWithMutexStraightToMap(s.GetTransactionsByType(c, "from"))
+		}
+		b.StopTimer()
+
+		if !reflect.DeepEqual(result, want) {
+
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+
+		b.StartTimer()
+	}
+}
+
+func BenchmarkMutexStraightToMapByOwner(b *testing.B) {
+
+	cardService := card.NewService("БАНК БАБАБАНК")
+
+	cards := makeCards()
+
+	for _, v := range cards {
+
+		cardService.AddCard(v)
+	}
+
+	transactions := makeTransactions(cards)
+
+	s := &Service{
+		CardSvc:      cardService,
+		Transactions: transactions,
+	}
+
+	want := make(map[string]map[int]int)
+
+	for owner := range s.CardSvc.Owners() {
+
+		want[owner] = s.GetMccTransactionsSumAmountMap(s.GetTransactionsByTypeAndOwner(owner, "from"))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		result := make(map[string]map[int]int)
+
+		for owner := range s.CardSvc.Owners() {
+
+			result[owner] = s.GetMccTransactionsSumAmountMapWithMutexStraightToMap(s.GetTransactionsByTypeAndOwner(owner, "from"))
+		}
+		b.StopTimer()
+
+		if !reflect.DeepEqual(result, want) {
+
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+
+		b.StartTimer()
 	}
 }

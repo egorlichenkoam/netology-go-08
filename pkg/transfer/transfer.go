@@ -53,7 +53,7 @@ func makeYearMonthKey(unixTime int64) string {
 }
 
 // возвращает карту mcc кодов c суммами затрат по ним используя mutex и пишет прямо в результатирующую карту
-func (s *Service) GetMccTransactionsSumAmountMapByCardWithMutexStraightToMap(transactions []*transaction.Transaction) (result map[int]int) {
+func (s *Service) GetMccTransactionsSumAmountMapWithMutexStraightToMap(transactions []*transaction.Transaction) (result map[int]int) {
 
 	partCount := 10
 
@@ -100,7 +100,7 @@ func (s *Service) GetMccTransactionsSumAmountMapByCardWithMutexStraightToMap(tra
 }
 
 // возвращает карту mcc кодов c суммами затрат по ним используя Channels
-func (s *Service) GetMccTransactionsSumAmountMapByCardWithChannels(transactions []*transaction.Transaction) (result map[int]int) {
+func (s *Service) GetMccTransactionsSumAmountMapWithChannels(transactions []*transaction.Transaction) (result map[int]int) {
 
 	partCount := 10
 
@@ -123,7 +123,7 @@ func (s *Service) GetMccTransactionsSumAmountMapByCardWithChannels(transactions 
 		}
 		go func(chMap chan<- map[int]int) {
 
-			chMap <- s.GetMccTransactionsSumAmountMapByCard(part)
+			chMap <- s.GetMccTransactionsSumAmountMap(part)
 
 		}(chMap)
 	}
@@ -147,7 +147,7 @@ func (s *Service) GetMccTransactionsSumAmountMapByCardWithChannels(transactions 
 }
 
 // возвращает карту mcc кодов c суммами затрат по ним используя mutex
-func (s *Service) GetMccTransactionsSumAmountMapByCardWithMutex(transactions []*transaction.Transaction) (result map[int]int) {
+func (s *Service) GetMccTransactionsSumAmountMapWithMutex(transactions []*transaction.Transaction) (result map[int]int) {
 
 	partCount := 10
 
@@ -174,7 +174,7 @@ func (s *Service) GetMccTransactionsSumAmountMapByCardWithMutex(transactions []*
 		}
 		go func() {
 
-			m := s.GetMccTransactionsSumAmountMapByCard(part)
+			m := s.GetMccTransactionsSumAmountMap(part)
 
 			mu.Lock()
 
@@ -195,7 +195,7 @@ func (s *Service) GetMccTransactionsSumAmountMapByCardWithMutex(transactions []*
 }
 
 // возвращает карту mcc кодов c суммами затрат по ним
-func (s *Service) GetMccTransactionsSumAmountMapByCard(transactions []*transaction.Transaction) (result map[int]int) {
+func (s *Service) GetMccTransactionsSumAmountMap(transactions []*transaction.Transaction) (result map[int]int) {
 
 	result = make(map[int]int)
 
@@ -246,6 +246,22 @@ func (s *Service) GetTransactionsGroupedByMonths(card *card.Card, start, end int
 	}
 
 	return nil
+}
+
+// возвращает список транзакций карты по типу (from - расход, to - приход)
+func (s *Service) GetTransactionsByTypeAndOwner(owner string, operationType string) (transactions []*transaction.Transaction) {
+
+	result := make([]*transaction.Transaction, 0)
+
+	for _, c := range s.CardSvc.OwnerCards(owner) {
+
+		if c.Owner == owner {
+
+			result = append(result, s.GetTransactionsByType(c, operationType)...)
+		}
+	}
+
+	return result
 }
 
 // возвращает список транзакций карты по типу (from - расход, to - приход)
