@@ -128,8 +128,14 @@ func TestService_Card2Card(t *testing.T) {
 
 			cardFrom := s.CardSvc.FindCardByNumber(tt.args.from)
 
+			got := s.GetSortedTransactionsByType(cardFrom, "from")
+
+			for _, tx := range got {
+
+				tx.Datetime = 0
+			}
 			// проверка совпадает ли сортированый слайс транзакций с требуемым
-			if got := s.GetSortedTransactionsByType(cardFrom, "from"); !reflect.DeepEqual(got, tt.want) {
+			if !reflect.DeepEqual(got, tt.want) {
 
 				t.Errorf("Sum() = %v, want %v", got, tt.want)
 			}
