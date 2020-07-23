@@ -6,14 +6,13 @@ import (
 	"homework/pkg/transfer"
 )
 
-// основной метод
 func main() {
 
 	cards := testdata.MakeCards()
 
 	transactions := testdata.MakeTransactions(cards)
 
-	cardService := card.NewService("БАНК БАНКОВ")
+	cardService := card.NewService("ТРУ ЛЯ ЛЯ")
 
 	for _, c := range cards {
 
@@ -23,5 +22,4 @@ func main() {
 	transferService := transfer.NewServiceWithTransactions(cardService, transactions)
 
 	_ = transferService.ExportTransactions()
-
 }

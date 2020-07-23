@@ -3,17 +3,19 @@ package main
 import (
 	"homework/pkg/card"
 	"homework/pkg/testdata"
+	"homework/pkg/transaction"
 	"homework/pkg/transfer"
+	"log"
+	"os"
 )
 
-// основной метод
 func main() {
 
 	cards := testdata.MakeCards()
 
 	transactions := testdata.MakeTransactions(cards)
 
-	cardService := card.NewService("БАНК БАНКОВ")
+	cardService := card.NewService("ТРУ ЛЯ ЛЯ")
 
 	for _, c := range cards {
 
@@ -24,4 +26,14 @@ func main() {
 
 	_ = transferService.ExportTransactions()
 
+	transferService.Transactions = make([]*transaction.Transaction, 0)
+
+	dir, _ := os.Getwd()
+
+	_ = transferService.ImportTransactions(dir + "/exports.csv")
+
+	for _, tx := range transferService.Transactions {
+
+		log.Println(tx.String())
+	}
 }
