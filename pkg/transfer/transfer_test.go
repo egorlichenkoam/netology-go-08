@@ -209,6 +209,108 @@ func TestService_ExportTransactionsToJson(t *testing.T) {
 	}
 }
 
+// тестируем импорт транзакций из xml файла
+func TestService_ImportTransactionsFromXml(t *testing.T) {
+
+	cardService := card.NewService("БАНК БАБАБАНК")
+
+	cards := testdata.MakeCards()
+
+	for _, v := range cards {
+
+		cardService.AddCard(v)
+	}
+
+	transactions := testdata.MakeTransactions(cards)
+
+	tSvc := Service{
+		CardSvc:      cardService,
+		Transactions: transactions,
+	}
+
+	tests := []struct {
+		name            string
+		transferService Service
+		want            error
+	}{
+		{
+			name:            "Импорт-тест xml",
+			transferService: tSvc,
+			want:            nil,
+		},
+	}
+
+	for _, tt := range tests {
+
+		t.Run(tt.name, func(t *testing.T) {
+
+			// экспортируем транзакции
+			_ = tt.transferService.ExportTransactionsToXml()
+
+			t.Log("Transactions count export : ", len(tt.transferService.Transactions))
+
+			// опустошаем слайс транзакций сервиса
+			tt.transferService.Transactions = make([]*transaction.Transaction, 0)
+
+			t.Log("Transactions count clear : ", len(tt.transferService.Transactions))
+
+			dir, _ := os.Getwd()
+
+			// считываем транзакции из полуеченного ранее json файла
+			if err := tt.transferService.ImportTransactionsFromXml(dir + "/exports.xml"); err != tt.want {
+
+				t.Errorf("ExportTransactions() gotErr = %v, want %v", err, tt.want)
+			}
+
+			// выводим количество импортированных транзакций
+			t.Log("Transactions count import : ", len(tt.transferService.Transactions))
+		})
+	}
+}
+
+// тестируем экпорт транзакций в xml
+func TestService_ExportTransactionsToXml(t *testing.T) {
+
+	cardService := card.NewService("БАНК БАБАБАНК")
+
+	cards := testdata.MakeCards()
+
+	for _, v := range cards {
+
+		cardService.AddCard(v)
+	}
+
+	transactions := testdata.MakeTransactions(cards)
+
+	tSvc := Service{
+		CardSvc:      cardService,
+		Transactions: transactions,
+	}
+
+	tests := []struct {
+		name            string
+		transferService Service
+		want            error
+	}{
+		{
+			name:            "Экспорт-тест xml",
+			transferService: tSvc,
+			want:            nil,
+		},
+	}
+
+	for _, tt := range tests {
+
+		t.Run(tt.name, func(t *testing.T) {
+
+			if err := tt.transferService.ExportTransactionsToXml(); err != nil {
+
+				t.Errorf("ExportTransactionsToXml() gotErr = %v, want %v", err, tt.want)
+			}
+		})
+	}
+}
+
 func BenchmarkMutexByCard(b *testing.B) {
 
 	cardService := card.NewService("БАНК БАБАБАНК")

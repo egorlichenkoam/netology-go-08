@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/csv"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"homework/pkg/card"
 	"homework/pkg/transaction"
@@ -514,6 +515,101 @@ func (s *Service) ImportTransactionsFromJson(filePath string) (err error) {
 
 		return err
 	}
+
+	return nil
+}
+
+// экспортируем транзакции в xml файл
+func (s *Service) ExportTransactionsToXml() (err error) {
+
+	err = os.Chdir("temp")
+
+	if err != nil {
+
+		log.Println("Can not open temp catalog", err)
+
+		err = os.Mkdir("temp", os.ModePerm)
+
+		if err != nil {
+
+			log.Println("Can not create temp directory", err)
+
+			return err
+		} else {
+
+			err = os.Chdir("temp")
+		}
+	}
+
+	file, err := os.Create("exports.xml")
+
+	if err != nil {
+
+		log.Println("Can not create file", err)
+
+		return err
+	}
+
+	defer func(c io.Closer) {
+
+		if cerr := c.Close(); cerr != nil {
+
+			log.Println(cerr)
+
+			err = cerr
+		}
+	}(file)
+
+	encoder := xml.NewEncoder(file)
+
+	transactions := transaction.Transactions{
+		Transactions: s.Transactions,
+	}
+
+	err = encoder.Encode(&transactions)
+
+	if err != nil {
+
+		log.Println("Can not write to file", err)
+	}
+
+	return err
+}
+
+// импортирует транзакции из xml файла
+func (s *Service) ImportTransactionsFromXml(filePath string) (err error) {
+
+	reader, err := os.Open(filePath)
+
+	if err != nil {
+
+		log.Println("Can not open import transactions file", err)
+
+		return err
+	}
+
+	defer func(c io.Closer) {
+
+		if cerr := c.Close(); cerr != nil {
+
+			log.Println(cerr)
+
+			err = cerr
+		}
+	}(reader)
+
+	transactions := transaction.Transactions{}
+
+	err = xml.NewDecoder(reader).Decode(&transactions)
+
+	if err != nil {
+
+		log.Println("Can not read data from import file", err)
+
+		return err
+	}
+
+	s.Transactions = transactions.Transactions
 
 	return nil
 }

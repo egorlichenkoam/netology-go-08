@@ -64,7 +64,7 @@ func MakeTransactions(cards []*card.Card) (transactions []*transaction.Transacti
 
 	cardsCount := len(cards)
 
-	transactions = make([]*transaction.Transaction, 1000)
+	transactions = make([]*transaction.Transaction, 10)
 
 	transactionAmount := 10_00
 

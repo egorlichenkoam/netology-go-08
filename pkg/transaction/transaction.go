@@ -5,14 +5,20 @@ import (
 )
 
 type Transaction struct {
-	Id            int    `json:"id"`
-	Amount        int    `json:"amount"`
-	Datetime      int64  `json:"datetime"`
-	OperationType string `json:"operation_type"`
-	Status        bool   `json:"status"`
-	Mcc           int    `json:"mcc"`
-	CardFrom      string `json:"card_from"`
-	CardTo        string `json:"card_to"`
+	XMLName       string `xml:"transaction"`
+	Id            int    `json:"id" xml:"id"`
+	Amount        int    `json:"amount" xml:"amount"`
+	Datetime      int64  `json:"datetime" xml:"datetime"`
+	OperationType string `json:"operation_type" xml:"operation_type"`
+	Status        bool   `json:"status" xml:"status"`
+	Mcc           int    `json:"mcc" xml:"mcc"`
+	CardFrom      string `json:"card_from" xml:"card_from"`
+	CardTo        string `json:"card_to" xml:"card_to"`
+}
+
+type Transactions struct {
+	XMLName      string `xml:"transactions"`
+	Transactions []*Transaction
 }
 
 func (t *Transaction) MapRowToTransaction(content []string) (err error) {
