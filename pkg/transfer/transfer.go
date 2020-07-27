@@ -3,6 +3,7 @@ package transfer
 import (
 	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"homework/pkg/card"
 	"homework/pkg/transaction"
@@ -430,6 +431,93 @@ func (s *Service) isValid(number string) bool {
 	return s.CardSvc.CheckCardNumberByLuna(number)
 }
 
+// экспортируем транзакции в json файл
+func (s *Service) ExportTransactionsToJson() (err error) {
+
+	err = os.Chdir("temp")
+
+	if err != nil {
+
+		log.Println("Can not open temp catalog", err)
+
+		err = os.Mkdir("temp", os.ModePerm)
+
+		if err != nil {
+
+			log.Println("Can not create temp directory", err)
+
+			return err
+		} else {
+
+			err = os.Chdir("temp")
+		}
+	}
+
+	file, err := os.Create("exports.json")
+
+	if err != nil {
+
+		log.Println("Can not create file", err)
+
+		return err
+	}
+
+	defer func(c io.Closer) {
+
+		if cerr := c.Close(); cerr != nil {
+
+			log.Println(cerr)
+
+			err = cerr
+		}
+	}(file)
+
+	encoder := json.NewEncoder(file)
+
+	err = encoder.Encode(s.Transactions)
+
+	if err != nil {
+
+		log.Println("Can not write to file", err)
+	}
+
+	return err
+}
+
+// импортирует транзакции из json файла
+func (s *Service) ImportTransactionsFromJson(filePath string) (err error) {
+
+	reader, err := os.Open(filePath)
+
+	if err != nil {
+
+		log.Println("Can not open import transactions file", err)
+
+		return err
+	}
+
+	defer func(c io.Closer) {
+
+		if cerr := c.Close(); cerr != nil {
+
+			log.Println(cerr)
+
+			err = cerr
+		}
+	}(reader)
+
+	err = json.NewDecoder(reader).Decode(&s.Transactions)
+
+	if err != nil {
+
+		log.Println("Can not read data from import file", err)
+
+		return err
+	}
+
+	return nil
+}
+
 // экспортирует транзакции в файл
 func (s *Service) ExportTransactions() (err error) {
 
@@ -488,7 +576,7 @@ func (s *Service) ExportTransactions() (err error) {
 	return err
 }
 
-// испортирует транзакции из файла
+// импортирует транзакции из файла
 func (s *Service) ImportTransactions(filePath string) (err error) {
 
 	data, err := ioutil.ReadFile(filePath)

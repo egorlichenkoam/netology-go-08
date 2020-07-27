@@ -18,6 +18,3 @@ HELP.md
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-
-
-cmd/importer/exports.csv

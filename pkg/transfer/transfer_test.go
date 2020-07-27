@@ -1,14 +1,9 @@
 package transfer
 
 import (
-	"bytes"
-	"encoding/csv"
-	"fmt"
 	"homework/pkg/card"
 	"homework/pkg/testdata"
 	"homework/pkg/transaction"
-	"io/ioutil"
-	"log"
 	"os"
 	"reflect"
 	"testing"
@@ -65,46 +60,6 @@ func TestService_ImportTransactions(t *testing.T) {
 			}
 
 			t.Log("Transactions count import : ", len(tt.transferService.Transactions))
-
-			tt.transferService.Transactions = make([]*transaction.Transaction, 0)
-
-			t.Log("Transactions count clear : ", len(tt.transferService.Transactions))
-
-			data, err := ioutil.ReadFile(dir + "/exports.csv")
-
-			if err != nil {
-
-				log.Println("Can not open import transactions file", err)
-			}
-
-			reader := csv.NewReader(bytes.NewReader(data))
-
-			records, err := reader.ReadAll()
-
-			if err != nil {
-
-				log.Println("Can not read data from import file", err)
-			}
-
-			for _, content := range records {
-
-				tx := transaction.Transaction{}
-
-				if err := tx.MapRowToTransaction(content); err != tt.want {
-
-					t.Errorf("MapRowToTransaction() gotErr = %v, want %v", err, tt.want)
-				}
-
-				if err != nil {
-
-					log.Println("Can not import transaction", err, content)
-				} else {
-
-					tt.transferService.Transactions = append(tt.transferService.Transactions, &tx)
-				}
-			}
-
-			t.Log("Transactions count import : ", len(tt.transferService.Transactions))
 		})
 	}
 }
@@ -152,12 +107,8 @@ func TestService_ExportTransactions(t *testing.T) {
 	}
 }
 
-func TestService_Card2Card(t *testing.T) {
-
-	type fields struct {
-		CardSvc      *card.Service
-		Transactions []*transaction.Transaction
-	}
+// тестируем импорт транзакций из json файла
+func TestService_ImportTransactionsFromJson(t *testing.T) {
 
 	cardService := card.NewService("БАНК БАБАБАНК")
 
@@ -170,99 +121,89 @@ func TestService_Card2Card(t *testing.T) {
 
 	transactions := testdata.MakeTransactions(cards)
 
+	tSvc := Service{
+		CardSvc:      cardService,
+		Transactions: transactions,
+	}
+
 	tests := []struct {
-		name   string
-		fields fields
+		name            string
+		transferService Service
+		want            error
 	}{
 		{
-			name: "Вывод группированных по MCC затрат без ",
-			fields: fields{
-				CardSvc:      cardService,
-				Transactions: transactions,
-			},
+			name:            "Импорт-тест json",
+			transferService: tSvc,
+			want:            nil,
 		},
 	}
+
 	for _, tt := range tests {
+
 		t.Run(tt.name, func(t *testing.T) {
 
-			s := &Service{
-				CardSvc:      tt.fields.CardSvc,
-				Transactions: tt.fields.Transactions,
+			// экспортируем транзакции
+			_ = tt.transferService.ExportTransactionsToJson()
+
+			t.Log("Transactions count export : ", len(tt.transferService.Transactions))
+
+			// опустошаем слайс транзакций сервиса
+			tt.transferService.Transactions = make([]*transaction.Transaction, 0)
+
+			t.Log("Transactions count clear : ", len(tt.transferService.Transactions))
+
+			dir, _ := os.Getwd()
+
+			// считываем транзакции из полуеченного ранее json файла
+			if err := tt.transferService.ImportTransactionsFromJson(dir + "/exports.json"); err != tt.want {
+
+				t.Errorf("ExportTransactions() gotErr = %v, want %v", err, tt.want)
 			}
 
-			for _, c := range s.CardSvc.Cards {
+			// выводим количество импортированных транзакций
+			t.Log("Transactions count import : ", len(tt.transferService.Transactions))
+		})
+	}
+}
 
-				fmt.Println("")
-				fmt.Println("OWNER : ", c.Owner)
-				fmt.Println("CARD NUMBER : ", c.Number)
-				fmt.Println("")
+// тестируем экпорт транзакций в json
+func TestService_ExportTransactionsToJson(t *testing.T) {
 
-				mccTransactionSumAmountMap := s.GetMccTransactionsSumAmountMap(s.GetTransactionsByType(c, "from"))
+	cardService := card.NewService("БАНК БАБАБАНК")
 
-				fmt.Println("SIMPLE")
-				fmt.Println("------------------------")
-				fmt.Println(mccTransactionSumAmountMap)
-				fmt.Println("------------------------")
+	cards := testdata.MakeCards()
 
-				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapWithMutex(s.GetTransactionsByType(c, "from"))
+	for _, v := range cards {
 
-				fmt.Println("MUTEX")
-				fmt.Println("------------------------")
-				fmt.Println(mccTransactionSumAmountMap)
-				fmt.Println("------------------------")
+		cardService.AddCard(v)
+	}
 
-				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapWithChannels(s.GetTransactionsByType(c, "from"))
+	transactions := testdata.MakeTransactions(cards)
 
-				fmt.Println("CHANNELS")
-				fmt.Println("------------------------")
-				fmt.Println(mccTransactionSumAmountMap)
-				fmt.Println("------------------------")
+	tSvc := Service{
+		CardSvc:      cardService,
+		Transactions: transactions,
+	}
 
-				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapWithMutexStraightToMap(s.GetTransactionsByType(c, "from"))
+	tests := []struct {
+		name            string
+		transferService Service
+		want            error
+	}{
+		{
+			name:            "Экспорт-тест",
+			transferService: tSvc,
+			want:            nil,
+		},
+	}
 
-				fmt.Println("MUTEXSTRAIGHTTOMAP")
-				fmt.Println("------------------------")
-				fmt.Println(mccTransactionSumAmountMap)
-				fmt.Println("------------------------")
-			}
+	for _, tt := range tests {
 
-			for owner, cards := range s.CardSvc.Owners() {
+		t.Run(tt.name, func(t *testing.T) {
 
-				fmt.Println("")
-				fmt.Println("OWNER : ", owner)
-				fmt.Println("")
+			if err := tt.transferService.ExportTransactionsToJson(); err != nil {
 
-				fmt.Println("")
-				fmt.Println("CARDS COUNT : ", len(cards))
-				fmt.Println("")
-
-				mccTransactionSumAmountMap := s.GetMccTransactionsSumAmountMap(s.GetTransactionsByTypeAndOwner(owner, "from"))
-
-				fmt.Println("SIMPLE")
-				fmt.Println("------------------------")
-				fmt.Println(mccTransactionSumAmountMap)
-				fmt.Println("------------------------")
-
-				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapWithMutex(s.GetTransactionsByTypeAndOwner(owner, "from"))
-
-				fmt.Println("MUTEX")
-				fmt.Println("------------------------")
-				fmt.Println(mccTransactionSumAmountMap)
-				fmt.Println("------------------------")
-
-				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapWithChannels(s.GetTransactionsByTypeAndOwner(owner, "from"))
-
-				fmt.Println("CHANNELS")
-				fmt.Println("------------------------")
-				fmt.Println(mccTransactionSumAmountMap)
-				fmt.Println("------------------------")
-
-				mccTransactionSumAmountMap = s.GetMccTransactionsSumAmountMapWithMutexStraightToMap(s.GetTransactionsByTypeAndOwner(owner, "from"))
-
-				fmt.Println("MUTEXSTRAIGHTTOMAP")
-				fmt.Println("------------------------")
-				fmt.Println(mccTransactionSumAmountMap)
-				fmt.Println("------------------------")
+				t.Errorf("ExportTransactionsToJson() gotErr = %v, want %v", err, tt.want)
 			}
 		})
 	}
