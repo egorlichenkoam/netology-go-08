@@ -7,19 +7,12 @@ import (
 )
 
 func main() {
-
 	cards := testdata.MakeCards()
-
 	transactions := testdata.MakeTransactions(cards)
-
 	cardService := card.NewService("ТРУ ЛЯ ЛЯ")
-
 	for _, c := range cards {
-
 		cardService.AddCard(c)
 	}
-
 	transferService := transfer.NewServiceWithTransactions(cardService, transactions)
-
 	_ = transferService.ExportTransactions()
 }
